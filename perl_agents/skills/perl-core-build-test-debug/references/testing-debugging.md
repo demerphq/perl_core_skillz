@@ -125,6 +125,73 @@ Useful areas:
 - AddressSanitizer build notes.
 - `Porting/bench.pl`, `t/perf/*.t`, and `pod/perlperf.pod` for performance work.
 
+## AddressSanitizer and LeakSanitizer
+
+AddressSanitizer (ASan) includes LeakSanitizer (LSan) on the usual GCC and
+Clang toolchains; there is normally no separate `lsan` package or executable.
+Build an isolated tree with sanitizer instrumentation, for example:
+
+```sh
+mkdir -p /path/to/perldev/tmp
+git worktree add --detach /path/to/perldev/tmp/perl-asan HEAD
+cd /path/to/perldev/tmp/perl-asan
+ASAN_OPTIONS=detect_leaks=0 \
+CCACHE_DIR=/path/to/perldev/.ccache \
+./Configure -des -Dusedevel -Dusethreads -DDEBUGGING \
+  -Dcc='ccache gcc' \
+  -Accflags=-fsanitize=address \
+  -Aldflags=-fsanitize=address \
+  -Doptimize='-g -O1'
+ASAN_OPTIONS=detect_leaks=0 \
+CCACHE_DIR=/path/to/perldev/.ccache \
+make -j1 perl
+```
+
+Keep `detect_leaks=0` while configuring and building. Perl's bootstrap
+programs and build-time compiler runs intentionally retain allocations, and
+enabling LSan for those steps can abort the build before the target test runs.
+Enable LSan only for the focused process being examined:
+
+```sh
+PERL_DESTRUCT_LEVEL=2 \
+ASAN_OPTIONS=detect_leaks=1:abort_on_error=1 \
+./perl -Ilib t/op/foo.t
+```
+
+Use `PERL_DESTRUCT_LEVEL=2` when interpreting leak reports. Perl normally
+does not free everything at shutdown (`PL_perl_destruct_level` defaults to
+0); level 1 performs full cleanup, while level 2 performs full cleanup with
+additional checks. Reports obtained below level 2 can therefore be expected
+shutdown retention rather than leaks in the code under test. A useful
+workflow is to compare a minimal reproducer with plain Perl and an ordinary
+subroutine, but only treat a difference that survives level 2 as actionable.
+
+LSan is sensitive to Linux tracing. It refuses to run when the process is
+being observed through `ptrace`, including `gdb`, `strace`, and some sandbox or
+agent runners. Run the instrumented Perl directly from an ordinary terminal
+or host shell and check before testing:
+
+```sh
+grep TracerPid /proc/$$/status
+```
+
+The value should be `TracerPid: 0`. Changing `kernel.yama.ptrace_scope`
+controls who may attach with ptrace, but does not detach an already-running
+tracer and is usually not needed for LSan.
+
+Keep large sanitizer worktrees under the repository's workspace-local
+`./tmp/` directory rather than system `/tmp/`. Remove only the exact
+temporary worktree when finished. If `df` reports a full filesystem while
+directory totals are small, check for open-but-deleted files with
+`lsof -nP +L1`; a terminated process may be required to release such space.
+
+For ccache-backed builds in this development tree, use:
+
+```sh
+CCACHE_DIR=/path/to/perldev/.ccache ccache --clear
+ccache --clear                 # clear the global/default cache
+```
+
 ## Failure Triage
 
 - Re-run a failing test alone before broadening.

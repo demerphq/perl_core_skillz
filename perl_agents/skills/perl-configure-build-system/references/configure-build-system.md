@@ -39,6 +39,26 @@ make test_harness TEST_FILES='comp/hints.t'
 ./perl -Ilib -c makedepend.SH
 ```
 
+For an isolated sanitizer build, keep the build directory under the
+workspace's local `./tmp/` directory and leave leak detection disabled during
+Configure and compilation. ASan normally supplies LSan; enable leak checks
+only on the final test process, with `PERL_DESTRUCT_LEVEL=2` so Perl performs
+full shutdown cleanup with checks. Example compiler options are:
+
+```sh
+CCACHE_DIR=/path/to/perldev/.ccache \
+ASAN_OPTIONS=detect_leaks=0 \
+./Configure -des -Dusedevel -Dusethreads -DDEBUGGING \
+  -Dcc='ccache gcc' \
+  -Accflags=-fsanitize=address \
+  -Aldflags=-fsanitize=address \
+  -Doptimize='-g -O1'
+```
+
+LSan must be run outside `gdb`, `strace`, and ptrace-based sandbox or agent
+wrappers; otherwise it can terminate with “LeakSanitizer does not work under
+ptrace”.
+
 Use platform-specific build commands for `win32/`, `vms/`, `os2/`, or cross builds instead of forcing the Unix make path.
 
 ## Useful Searches
