@@ -32,9 +32,11 @@ When working under tmux, run slow `make`, regeneration, and broad-test
 commands in a separate window so interactive diagnosis and status checks remain
 available without interrupting the long-running job.
 
-The workspace's `make_test` command is the preferred faster broad test run when
-the user requests it; do not silently substitute a full `make test`, since the
-two workflows have different cost and scheduling behavior.
+Use the canonical make targets in documentation and skills rather than local
+shell aliases: `make test_harness` for the broad test suite and
+`make test_porting` for the porting checks.  For a faster parallel harness run,
+use the documented form `TEST_JOBS=N make -jN test_harness`; for porting checks,
+use `TEST_JOBS=N make -jN test_porting`.
 
 ## Running the Built Perl
 
