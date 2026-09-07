@@ -28,6 +28,10 @@ under `./tmp/`, and use the workspace ccache at
 `/home/demerphq/git_tree/perldev/.ccache` (or an equivalent absolute path when
 working from another checkout).
 
+When working under tmux, run slow `make`, regeneration, and broad-test
+commands in a separate window so interactive diagnosis and status checks remain
+available without interrupting the long-running job.
+
 The workspace's `make_test` command is the preferred faster broad test run when
 the user requests it; do not silently substitute a full `make test`, since the
 two workflows have different cost and scheduling behavior.
