@@ -16,7 +16,6 @@ After building the tree, run project Perl scripts with the built interpreter and
 
 ```sh
 ./perl -Ilib some_script.pl
-./perl -I. -Ilib t/porting/perlagentskills.t
 ```
 
 Do not use bare `./perl some_script.pl` for project scripts that need core modules; without `-Ilib`, `@INC` may point at install paths that do not exist yet.

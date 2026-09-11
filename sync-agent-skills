@@ -1,0 +1,136 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+use Cwd qw(abs_path);
+use File::Copy qw(copy);
+use File::Find qw(find);
+use File::Path qw(make_path);
+use File::Spec;
+
+sub usage {
+    die <<'USAGE';
+Usage: ./sync-agent-skills [--check|--sync] [--prune] [PERL_ROOT]
+
+The default is --check. The canonical skills live in PERL_ROOT/.agents/skills;
+the legacy mirror is perl_agents/skills in this repository.
+
+--sync   Copy changed and missing canonical skill files to the mirror.
+--prune  With --sync, remove mirror files absent from the canonical tree.
+USAGE
+}
+
+my $mode = 'check';
+my $prune = 0;
+my @args;
+for my $arg (@ARGV) {
+    if ($arg eq '--check') {
+        $mode = 'check';
+    }
+    elsif ($arg eq '--sync') {
+        $mode = 'sync';
+    }
+    elsif ($arg eq '--prune') {
+        $prune = 1;
+    }
+    elsif ($arg eq '--help' || $arg eq '-h') {
+        usage();
+    }
+    elsif ($arg =~ /^-/) {
+        usage();
+    }
+    else {
+        push @args, $arg;
+    }
+}
+usage() if @args > 1;
+
+my $script = abs_path($0) or die "cannot resolve $0: $!\n";
+my (undef, $mirror_dir, undef) = File::Spec->splitpath($script);
+my $mirror_root = abs_path($mirror_dir)
+    or die "cannot resolve perl_skillz checkout\n";
+my $perl_root = $args[0]
+    || $ENV{PERL_ROOT}
+    || File::Spec->catdir($mirror_root, File::Spec->updir(), 'perl');
+$perl_root = abs_path($perl_root) if -d $perl_root;
+
+my $source = File::Spec->catdir($perl_root, '.agents', 'skills');
+my $target = File::Spec->catdir($mirror_root, 'perl_agents', 'skills');
+die "canonical skill directory not found: $source\n" unless -d $source;
+die "perl_skillz checkout not found: $mirror_root\n" unless -d $mirror_root;
+
+sub relative_files {
+    my ($root) = @_;
+    my @files;
+    find({
+        no_chdir => 1,
+        wanted => sub {
+            return unless -f $_;
+            push @files, File::Spec->abs2rel($File::Find::name, $root);
+        },
+    }, $root);
+    return sort @files;
+}
+
+sub same_file {
+    my ($left, $right) = @_;
+    return 0 unless -f $right;
+    open my $a, '<:raw', $left or die "open $left: $!\n";
+    open my $b, '<:raw', $right or die "open $right: $!\n";
+    local $/;
+    my $left_data = <$a>;
+    my $right_data = <$b>;
+    return defined($left_data) && defined($right_data) && $left_data eq $right_data;
+}
+
+my %source = map { $_ => 1 } relative_files($source);
+my %target = map { $_ => 1 } (-d $target ? relative_files($target) : ());
+my %all = map { $_ => 1 } keys(%source), keys(%target);
+my (@missing, @different, @extra);
+for my $file (sort keys %all) {
+    my $left = File::Spec->catfile($source, $file);
+    my $right = File::Spec->catfile($target, $file);
+    if (!$source{$file}) {
+        push @extra, $file;
+    }
+    elsif (!$target{$file}) {
+        push @missing, $file;
+    }
+    elsif (!same_file($left, $right)) {
+        push @different, $file;
+    }
+}
+
+if ($mode eq 'check') {
+    print "skill trees are synchronized\n"
+        unless @missing || @different || @extra;
+    print "missing from mirror: $_\n" for @missing;
+    print "different in mirror: $_\n" for @different;
+    print "extra in mirror: $_\n" for @extra;
+    exit(@missing || @different || @extra ? 1 : 0);
+}
+
+make_path($target) unless -d $target;
+for my $file (@missing, @different) {
+    my $left = File::Spec->catfile($source, $file);
+    my $right = File::Spec->catfile($target, $file);
+    my ($volume, $directories) = File::Spec->splitpath($right);
+    make_path($directories) unless -d $directories;
+    copy($left, $right) or die "copy $left -> $right: $!\n";
+    chmod((stat($left))[2] & 07777, $right) or die "chmod $right: $!\n";
+    print "updated $file\n";
+}
+if ($prune) {
+    for my $file (@extra) {
+        my $right = File::Spec->catfile($target, $file);
+        unlink $right or die "unlink $right: $!\n";
+        print "removed $file\n";
+    }
+}
+elsif (@extra) {
+    print "left mirror-only files untouched (use --prune to remove them):\n";
+    print "  $_\n" for @extra;
+}
+
+exit 0;

@@ -1,14 +1,22 @@
-This directory is the canonical source for repository agent skills.
+This directory is a legacy mirror of the Perl-core repository agent skills.
 
-The skill definitions under `.agents/skills/` are used by Codex in this
-repository, and their correspondence with `pod/perlagentskills.pod` is
-validated by `t/porting/perlagentskills.t`.
-The skill tree is documented in `pod/perlagentskills.pod`.
-Root `AGENTS.md` contains repository-wide agent directives, and root
-`CLAUDE.md` points Claude at `AGENTS.md` and this canonical skill tree.
+The canonical guidance and skill tree now live in the sibling `perl`
+checkout: `../../perl/AGENTS.md`, `../../perl/CLAUDE.md`, and
+`../../perl/.agents/skills/`. Keep this mirror synchronized when those files are
+updated.
+
+This directory contains the mirror skill files under `skills/`; its
+`AGENTS.md` and `CLAUDE.md` describe how to use them in this legacy layout.
+
+From the `perl_skillz` checkout, check or update this mirror with:
+
+```sh
+./sync-agent-skills --check
+./sync-agent-skills --sync
+```
 
 In short:
 
-- Edit `.agents/skills/...` first.
-- Keep `pod/perlagentskills.pod` in sync with the skill directories.
-- Run `./perl -I. -Ilib t/porting/perlagentskills.t` after skill edits.
+- Edit the canonical files in `../../perl/` first.
+- Propagate changes to `skills/` when maintaining this mirror.
+- Run validation from the `perl` checkout after skill edits.
