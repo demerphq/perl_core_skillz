@@ -38,7 +38,7 @@ Repository-specific skill files live in `skills/`. Read the relevant
 skill before editing the associated subsystem.
 
 The canonical skills live in the sibling `perl` checkout. From the
-`perl_skillz` repository root, run `./sync-agent-skills --check` to verify this
+`perl_core_skillz` repository root, run `./sync-agent-skills --check` to verify this
 mirror, or use `./sync-agent-skills --sync` to update it.
 
 ## Core API design

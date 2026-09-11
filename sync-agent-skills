@@ -49,7 +49,7 @@ usage() if @args > 1;
 my $script = abs_path($0) or die "cannot resolve $0: $!\n";
 my (undef, $mirror_dir, undef) = File::Spec->splitpath($script);
 my $mirror_root = abs_path($mirror_dir)
-    or die "cannot resolve perl_skillz checkout\n";
+    or die "cannot resolve perl_core_skillz checkout\n";
 my $perl_root = $args[0]
     || $ENV{PERL_ROOT}
     || File::Spec->catdir($mirror_root, File::Spec->updir(), 'perl');
@@ -58,7 +58,7 @@ $perl_root = abs_path($perl_root) if -d $perl_root;
 my $source = File::Spec->catdir($perl_root, '.agents', 'skills');
 my $target = File::Spec->catdir($mirror_root, 'perl_agents', 'skills');
 die "canonical skill directory not found: $source\n" unless -d $source;
-die "perl_skillz checkout not found: $mirror_root\n" unless -d $mirror_root;
+die "perl_core_skillz checkout not found: $mirror_root\n" unless -d $mirror_root;
 
 sub relative_files {
     my ($root) = @_;

@@ -8,7 +8,7 @@ updated.
 This directory contains the mirror skill files under `skills/`; its
 `AGENTS.md` and `CLAUDE.md` describe how to use them in this legacy layout.
 
-From the `perl_skillz` checkout, check or update this mirror with:
+From the `perl_core_skillz` checkout, check or update this mirror with:
 
 ```sh
 ./sync-agent-skills --check
