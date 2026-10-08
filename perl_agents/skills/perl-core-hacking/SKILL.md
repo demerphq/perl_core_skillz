@@ -12,6 +12,8 @@ Treat core changes as compatibility-sensitive. Read existing code and tests firs
 1. Locate the subsystem and nearby tests with `rg`.
 2. Check whether public API, binary compatibility, or generated files are involved.
 3. Prefer existing macros, allocation helpers, refcount patterns, and error paths.
+   Check `handy.h` for shared helpers before adding one. `ASSERT_IS_LITERAL`
+   checks literal strings, and `STR_WITH_LEN` supplies a literal and its length.
 4. Update docs, `pod/perldelta.pod`, or generated sources when the behavior or API changes.
 5. Run targeted tests before broad tests.
 
@@ -19,6 +21,9 @@ Read [references/core-change-workflow.md](references/core-change-workflow.md) fo
 
 ## Boundaries
 
+- When modifying a C source file, preserve the position of its opening poem or
+  quotation. Only the file's include directives belong above it; keep
+  declarations, functions, and other code below it.
 - Use `perl-sv-magic-memory` for SV/AV/HV/CV, refcounts, mortals, magic, save stack, arenas, or ownership changes.
 - Use `perl-parser-optree-ops` for parser, lexer, optree, pad, scope, opcode, check-function, or pp-function changes.
 - Use `perl-regex-engine` for regex compiler/executor/optimizer changes.

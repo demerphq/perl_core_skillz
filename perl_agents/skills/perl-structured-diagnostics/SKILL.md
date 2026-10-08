@@ -83,6 +83,12 @@ an explicit name. Names must be unique, including aliases and format macros.
 Delivery details are grouped under `emit`.
 The schema POD at the top of `diag_conf.pl` documents the fields and grammar.
 
+Pass semantic values to diagnostic macros, not English grammar fragments such
+as `"an ARRAY"` or `"a SCALAR"`. When a value selects the wording or grammar,
+declare it as a selector and provide a complete template for each supported
+case in every configured language. Reserve ordinary message parameters for
+runtime data that belongs in the rendered message.
+
 For named formats, use `%{name}` placeholders and put the formatter on the
 corresponding argument.  A compound formatter declares ordered `inputs`:
 

@@ -11,17 +11,24 @@ use File::Spec;
 
 sub usage {
     die <<'USAGE';
-Usage: ./sync-agent-skills [--check|--sync] [--prune] [PERL_ROOT]
+Usage: ./sync-agent-skills [--check|--sync]
+                           [--from-perl|--from-mirror]
+                           [--prune] [PERL_ROOT]
 
-The default is --check. The canonical skills live in PERL_ROOT/.agents/skills;
-the legacy mirror is perl_agents/skills in this repository.
+The defaults are --check and --from-perl. The Perl guidance lives in
+PERL_ROOT/AGENTS.md, PERL_ROOT/CLAUDE.md, and PERL_ROOT/.agents/skills; the
+legacy mirror is under perl_agents in this repository.
 
---sync   Copy changed and missing canonical skill files to the mirror.
---prune  With --sync, remove mirror files absent from the canonical tree.
+--sync         Copy changed and missing source files to the destination.
+--from-perl    Use the Perl skill tree as the source (the default).
+--from-mirror  Use the legacy mirror as the source.
+--prune        With --sync, remove destination files absent from the source.
 USAGE
 }
 
 my $mode = 'check';
+my $direction = 'from-perl';
+my $direction_seen;
 my $prune = 0;
 my @args;
 for my $arg (@ARGV) {
@@ -30,6 +37,12 @@ for my $arg (@ARGV) {
     }
     elsif ($arg eq '--sync') {
         $mode = 'sync';
+    }
+    elsif ($arg eq '--from-perl' || $arg eq '--from-mirror') {
+        usage()
+            if defined($direction_seen) && $direction_seen ne $arg;
+        $direction = $arg;
+        $direction_seen = $arg;
     }
     elsif ($arg eq '--prune') {
         $prune = 1;
@@ -54,11 +67,18 @@ my $perl_root = $args[0]
     || $ENV{PERL_ROOT}
     || File::Spec->catdir($mirror_root, File::Spec->updir(), 'perl');
 $perl_root = abs_path($perl_root) if -d $perl_root;
+die "Perl checkout not found: $perl_root\n" unless -d $perl_root;
 
-my $source = File::Spec->catdir($perl_root, '.agents', 'skills');
-my $target = File::Spec->catdir($mirror_root, 'perl_agents', 'skills');
-die "canonical skill directory not found: $source\n" unless -d $source;
+my $perl_skills = File::Spec->catdir($perl_root, '.agents', 'skills');
+my $mirror_skills = File::Spec->catdir($mirror_root, 'perl_agents', 'skills');
+my $perl_wrappers = $perl_root;
+my $mirror_wrappers = File::Spec->catdir($mirror_root, 'perl_agents');
 die "perl_core_skillz checkout not found: $mirror_root\n" unless -d $mirror_root;
+
+my ($source, $target, $target_name) = $direction eq 'from-perl'
+    ? ($perl_skills, $mirror_skills, 'mirror')
+    : ($mirror_skills, $perl_skills, 'Perl checkout');
+die "source skill directory not found: $source\n" unless -d $source;
 
 sub relative_files {
     my ($root) = @_;
@@ -84,6 +104,80 @@ sub same_file {
     return defined($left_data) && defined($right_data) && $left_data eq $right_data;
 }
 
+sub slurp {
+    my ($file) = @_;
+    open my $fh, '<:raw', $file or die "open $file: $!\n";
+    local $/;
+    return <$fh>;
+}
+
+sub adapt_wrapper {
+    my ($data, $file, $layout) = @_;
+
+    if ($file eq 'AGENTS.md') {
+        my $section = $layout eq 'perl' ? <<'PERL_AGENTS' : <<'MIRROR_AGENTS';
+## Agent Skills
+
+Repository-specific skill files live in `.agents/skills/`. Read the relevant
+skill before editing the associated subsystem.
+
+This is the canonical skill tree. From the sibling `perl_core_skillz`
+repository, run `./sync-agent-skills --check` to verify its legacy mirror, or
+use `./sync-agent-skills --sync` to update it. Use `--from-mirror` to restore
+the guidance and skill tree to a Perl branch which does not contain them.
+
+PERL_AGENTS
+## Agent Skills
+
+Repository-specific skill files live in `skills/`. Read the relevant
+skill before editing the associated subsystem.
+
+The canonical skills live in the sibling `perl` checkout. From the
+`perl_core_skillz` repository root, run `./sync-agent-skills --check` to verify
+this mirror, or use `./sync-agent-skills --sync` to update it. Use
+`--from-mirror` to reverse the direction after reviewing mirror changes or
+when restoring the guidance and skill tree to a Perl branch which does not
+contain them.
+
+MIRROR_AGENTS
+        $data =~ s/^## Agent Skills\n.*?(?=^## )/$section/ms
+            or die "cannot adapt Agent Skills section in $file\n";
+    }
+    elsif ($file eq 'CLAUDE.md') {
+        my $section = $layout eq 'perl' ? <<'PERL_CLAUDE' : <<'MIRROR_CLAUDE';
+Repository-specific skill files are located in `.agents/skills/`. Read the
+relevant `SKILL.md` file before working on the matching subsystem, and follow
+its referenced files as needed.
+
+The `.agents/skills` tree is canonical. Its legacy mirror is in
+`../perl_core_skillz/perl_agents/skills`; there is no separate
+`.claude/skills` mirror in this repository.
+
+PERL_CLAUDE
+Repository-specific skill files are located in `skills/`. Read the relevant
+`SKILL.md` file before working on the matching subsystem, and follow its
+referenced files as needed.
+
+The `skills` tree is the legacy mirror of the canonical skill source in
+`../../perl/.agents/skills`. There is no separate `.claude/skills` mirror in
+this repository.
+
+MIRROR_CLAUDE
+        $data =~ s/^Repository-specific skill files .*?(?=^## Companion instructions)/$section/ms
+            or die "cannot adapt skill location in $file\n";
+    }
+
+    return $data;
+}
+
+sub write_file {
+    my ($file, $data, $mode) = @_;
+    open my $fh, '>:raw', $file or die "open $file: $!\n";
+    print {$fh} $data or die "write $file: $!\n";
+    close $fh or die "close $file: $!\n";
+    chmod($mode, $file) or die "chmod $file: $!\n";
+}
+
 my %source = map { $_ => 1 } relative_files($source);
 my %target = map { $_ => 1 } (-d $target ? relative_files($target) : ());
 my %all = map { $_ => 1 } keys(%source), keys(%target);
@@ -103,12 +197,38 @@ for my $file (sort keys %all) {
 }
 
 if ($mode eq 'check') {
-    print "skill trees are synchronized\n"
-        unless @missing || @different || @extra;
-    print "missing from mirror: $_\n" for @missing;
-    print "different in mirror: $_\n" for @different;
-    print "extra in mirror: $_\n" for @extra;
-    exit(@missing || @different || @extra ? 1 : 0);
+    print "missing from $target_name: $_\n" for @missing;
+    print "different in $target_name: $_\n" for @different;
+    print "extra in $target_name: $_\n" for @extra;
+    my $wrapper_problem = 0;
+    for my $file (qw(AGENTS.md CLAUDE.md)) {
+        my $left = File::Spec->catfile(
+            $direction eq 'from-perl' ? $perl_wrappers : $mirror_wrappers,
+            $file,
+        );
+        my $right = File::Spec->catfile(
+            $direction eq 'from-perl' ? $mirror_wrappers : $perl_wrappers,
+            $file,
+        );
+        if (!-f $left) {
+            print "missing from source: $file\n";
+            $wrapper_problem = 1;
+            next;
+        }
+        my $layout = $direction eq 'from-perl' ? 'mirror' : 'perl';
+        my $expected = adapt_wrapper(slurp($left), $file, $layout);
+        if (!-f $right) {
+            print "missing from $target_name: $file\n";
+            $wrapper_problem = 1;
+        }
+        elsif (slurp($right) ne $expected) {
+            print "different in $target_name: $file\n";
+            $wrapper_problem = 1;
+        }
+    }
+    print "guidance and skill trees are synchronized\n"
+        unless @missing || @different || @extra || $wrapper_problem;
+    exit(@missing || @different || @extra || $wrapper_problem ? 1 : 0);
 }
 
 make_path($target) unless -d $target;
@@ -129,8 +249,30 @@ if ($prune) {
     }
 }
 elsif (@extra) {
-    print "left mirror-only files untouched (use --prune to remove them):\n";
+    print "left $target_name-only files untouched (use --prune to remove them):\n";
     print "  $_\n" for @extra;
 }
 
-exit 0;
+my $wrapper_problem = 0;
+for my $file (qw(AGENTS.md CLAUDE.md)) {
+    my $left = File::Spec->catfile(
+        $direction eq 'from-perl' ? $perl_wrappers : $mirror_wrappers,
+        $file,
+    );
+    my $right = File::Spec->catfile(
+        $direction eq 'from-perl' ? $mirror_wrappers : $perl_wrappers,
+        $file,
+    );
+    if (!-f $left) {
+        warn "cannot update $file: source file is missing\n";
+        $wrapper_problem = 1;
+        next;
+    }
+    my $layout = $direction eq 'from-perl' ? 'mirror' : 'perl';
+    my $data = adapt_wrapper(slurp($left), $file, $layout);
+    next if -f $right && slurp($right) eq $data;
+    write_file($right, $data, (stat($left))[2] & 07777);
+    print "updated $file\n";
+}
+
+exit($wrapper_problem ? 1 : 0);

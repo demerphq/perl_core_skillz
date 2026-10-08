@@ -39,7 +39,9 @@ skill before editing the associated subsystem.
 
 The canonical skills live in the sibling `perl` checkout. From this
 repository, run `./sync-agent-skills --check` to verify this mirror, or use
-`./sync-agent-skills --sync` to update it.
+`./sync-agent-skills --sync` to update it. Use `--from-mirror` to reverse the
+direction after reviewing mirror changes or when restoring the skill tree to
+a Perl branch which does not contain it.
 
 ## Core API design
 

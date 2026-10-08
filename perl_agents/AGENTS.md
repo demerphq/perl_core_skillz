@@ -19,6 +19,9 @@ asks for a different approach.
   locale, threads, multiplicity, and non-Unix assumptions when relevant.
 - Prefer existing Perl core patterns, helper macros, regeneration targets, and
   porting tools over new local conventions.
+- Do not change shared porting, build, test, regeneration, or other generic
+  infrastructure merely to accommodate a specific feature or distribution.
+  Such changes require the user's explicit authorization.
 - Do not hand-edit generated files without also identifying and running the
   generator, or documenting why regeneration is not appropriate.
 - Keep public API, binary compatibility, and XS/embedding compatibility in mind
@@ -38,8 +41,11 @@ Repository-specific skill files live in `skills/`. Read the relevant
 skill before editing the associated subsystem.
 
 The canonical skills live in the sibling `perl` checkout. From the
-`perl_core_skillz` repository root, run `./sync-agent-skills --check` to verify this
-mirror, or use `./sync-agent-skills --sync` to update it.
+`perl_core_skillz` repository root, run `./sync-agent-skills --check` to verify
+this mirror, or use `./sync-agent-skills --sync` to update it. Use
+`--from-mirror` to reverse the direction after reviewing mirror changes or
+when restoring the guidance and skill tree to a Perl branch which does not
+contain them.
 
 ## Core API design
 

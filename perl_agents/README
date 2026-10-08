@@ -13,10 +13,13 @@ From the `perl_core_skillz` checkout, check or update this mirror with:
 ```sh
 ./sync-agent-skills --check
 ./sync-agent-skills --sync
+./sync-agent-skills --sync --from-mirror
 ```
 
 In short:
 
 - Edit the canonical files in `../../perl/` first.
 - Propagate changes to `skills/` when maintaining this mirror.
+- Use `--from-mirror` only after reviewing mirror changes or when restoring a
+  missing canonical skill tree.
 - Run validation from the `perl` checkout after skill edits.
