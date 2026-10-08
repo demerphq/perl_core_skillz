@@ -105,7 +105,7 @@ make manisort
 - `make regen`: runs `regen.pl` and many, but not all, regenerators.
 - `make regen_headers` / `make regen-headers`: header-focused regeneration; the underscore spelling is kept for compatibility, and both appear in `Makefile.SH`.
 - `make regen_perly` / `make regen-perly`: parser regeneration for `perly` artifacts from `perly.y` via `regen_perly.pl`.
-- `make manisort`: preferred manifest sorting target; do not call `Porting/manisort` directly as the first choice.
+- `make manisort`: required after changing `MANIFEST`; use this make target rather than calling `Porting/manisort` directly.
 
 After adding files to `MANIFEST`, run `make manisort` before running the
 manifest and porting checks.  A manifest-order failure and a
@@ -140,11 +140,33 @@ Read `pod/perlhacktips.pod` before setting up deeper tooling.
 Useful areas:
 
 - gdb support and macros.
+- `Devel::Peek` for inspecting scalar flags, storage, and magic.
 - `PERL_DESTRUCT_LEVEL=2` for leak-sensitive checks.
 - `Porting/bisect.pl` for automated `git bisect` workflows, old-commit build shims, and regression isolation across history.
 - `Porting/valgrindpp.pl` for valgrind workflows.
 - AddressSanitizer build notes.
 - `Porting/bench.pl`, `t/perf/*.t`, and `pod/perlperf.pod` for performance work.
+
+### Inspecting Perl scalars with `Devel::Peek`
+
+Use `Devel::Peek::Dump()` when a question depends on an SV's internal flags,
+PV bytes, reference state, or magic. For example, it shows whether a string
+has the UTF-8 flag and how its bytes are stored:
+
+```perl
+use Devel::Peek;
+
+my $byte_string = "\x{00E9}";
+my $utf8_string = "\N{U+00E9}";
+
+Dump($byte_string);
+Dump($utf8_string);
+```
+
+The `FLAGS` and `PV` lines expose the distinction between an unflagged byte
+string and a UTF-8 flagged string. `Devel::Peek` reports implementation
+details, so use it to investigate behavior rather than treating its output as
+a stable interface for ordinary tests.
 
 ## AddressSanitizer and LeakSanitizer
 
