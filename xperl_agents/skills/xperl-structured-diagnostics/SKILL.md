@@ -232,8 +232,8 @@ on whether an error is continuable and whether parsing can safely continue.
 Warnings and errors can both accumulate in source order. A flush
 calls `__EXCEPT__` once with the complete canonical exception, then rechecks
 the diagnostics. It calls `__WARN__` once for each diagnostic that remains a
-warning, in source order. If any error remains, it calls `__DIE__` once with
-the aggregate and unwinds once. Warning-only batches finish after warning
+warning, in source order. Errors visit `__DIE__` at most once per delivery
+attempt. After remaining diagnostics have been handled, delivery unwinds once. Warning-only batches finish after warning
 delivery. A warning promoted to an error is not sent to `__WARN__`. Keep
 `croak` and `die` producer APIs distinct where their call-site or control-flow
 contracts differ, while routing their diagnostics through the same aggregate

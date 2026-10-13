@@ -155,6 +155,26 @@ directly to `__WARN__` without starting a new exception episode. If that
 warning hook throws, its exception replaces the active fatal and does not
 recursively invoke `__DIE__`.
 
+Hook delivery uses protected internal boundaries. They must not add visible
+`caller` frames, change `$^S`, fetch tied `$@`, or discard a hook's explicit
+assignment to `$@`. A user eval inside a hook remains an independent boundary.
+Test these properties whenever changing hook invocation or capture state.
+
+`__EXCEPT__` runs once before legacy delivery. Legacy replacements do not
+re-enter it. A warning from that hook is captured without invoking `__WARN__`.
+Its die stops the handler and supplies a replacement for the legacy die stage.
+A dying warning hook stops its own handler, then delivery continues through
+remaining diagnostics before one final application unwind. `__DIE__` is
+visited at most once per delivery attempt. A later catch and rethrow of the
+same object can visit it again. Only `warn` and `die` are captured. Explicit
+`print STDERR` and file logging remain immediate side effects.
+
+The private delivery journal retains original diagnostic groups and links
+replacement records for JSON/Dumper debugging. These originals share their
+diagnostic objects, so sanitization before delivery also applies to the
+journal. Do not copy sensitive values into detached history records. This
+journal is development data, not a stable propagation-history API.
+
 ## Review checklist
 
 - Is each warning or error represented as a separate diagnostic?
