@@ -188,7 +188,9 @@ journal is development data, not a stable propagation-history API.
 `${^DIAG_RENDER}` controls exception stringification at render time. Startup
 initializes it from `PERL_DIAG_RENDER`, defaulting to `auto:legacy`. Assignments
 and `local` affect existing caught exceptions as well as newly delivered ones.
-Text modes are `language:legacy` and `language:annotated`. `auto` chooses the
+Text modes are `language:legacy` and `language:annotated`. A bare language
+selects legacy text: `de` means `de:legacy`, and `auto` means `auto:legacy`.
+`auto` chooses the
 first nonempty `LC_ALL`, `LC_MESSAGES`, or `LANG` environment setting and uses
 its language prefix. Missing translations fall back to English. This locale
 choice is separate from detecting terminal encoding or respecting IO layers.
