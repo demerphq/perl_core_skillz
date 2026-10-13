@@ -88,8 +88,10 @@ The schema POD at the top of `diag_conf.pl` documents the fields and grammar.
 
 Pass semantic values to diagnostic macros, not English grammar fragments such
 as `"an ARRAY"` or `"a SCALAR"`. When a value selects the wording or grammar,
-declare it as a selector and provide a complete template for each supported
-case in every configured language. Reserve ordinary message parameters for
+declare it as a selector. Each language chooses its own cases and wildcard
+fallbacks; a missing translated case may fall back to English. Displayed
+parameters are the union of named placeholders across languages and cases.
+Reserve ordinary message parameters for
 runtime data that belongs in the rendered message.
 
 For named formats, use `%{name}` placeholders and put the formatter on the

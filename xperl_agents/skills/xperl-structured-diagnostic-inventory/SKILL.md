@@ -72,7 +72,7 @@ are gone and any remaining text adapters are understood.
 Use the repository inventory script rather than scanning by eye:
 
 ```sh
-perl Porting/diag_inventory.pl > /tmp/diag-inventory.txt
+perl Porting/diag_inventory.pl > ../tmp/diag-inventory.txt
 ```
 
 The report groups call sites by emitter and extracted format text. Count the
@@ -192,19 +192,21 @@ more than one ID:
 
 ```sh
 perl -e '
+  use charnames ":full";
+  our ($CONF, $META);
   require "./regen/diag_lib.pm";
-  my $c = do "./diag_conf.pl";
-  my %t;
-  for my $severity (keys %{$c->{diagnostics}}) {
-    for my $kind (keys %{$c->{diagnostics}{$severity}}) {
-      for my $d (values %{$c->{diagnostics}{$severity}{$kind}}) {
-        next if $d->{message}{dynamic};
-        push @{$t{$d->{message}{templates}{en}}}, $d->{code};
-      }
+  do "./diag_conf.pl" or die $@ || $!;
+  my %templates;
+  for my $diag (@{Diag::Migration::diagnostics($CONF)}) {
+    next if $diag->{dynamic};
+    for my $case (@{Diag::Migration::template_cases($diag, "en")}) {
+      $templates{$case->{template}}{$diag->{code}} = 1;
     }
   }
-  print join(" | ", @{$t{$_}}), "\n"
-      for grep { @{$t{$_}} > 1 } keys %t;
+  for my $template (sort keys %templates) {
+    my @codes = sort keys %{$templates{$template}};
+    print join(" | ", @codes), "\n" if @codes > 1;
+  }
 '
 ```
 
@@ -242,6 +244,29 @@ git diff --check
 
 Then rerun the focused inventory and relevant build or test. Commit each
 reviewable batch separately.
+
+## Generic wrappers need a separate inventory
+
+The emitter inventory does not prove that every core failure has a specific
+catalog identity. In particular, `regcomp.c` uses `vFAIL*` wrappers whose
+messages enter generic diagnostic records. Audit these calls separately:
+
+```sh
+perl -e '
+  require "./regen/diag_lib.pm";
+  my $source = Diag::Migration::read_source("regcomp.c");
+  my %count;
+  for my $call (Diag::Migration::calls($source, qr/vFAIL(?:[234]|[23]utf8f)?/)) {
+    $count{$call->{name}}++;
+  }
+  print "$_ $count{$_}\n" for sort keys %count;
+'
+```
+
+Classify producer-owned literals and formats for catalog migration. Retain
+opaque messages only at documented external or propagation boundaries. Keep
+these wrapper candidates in the tangible plan even when the normal inventory
+has no entries.
 
 ## Completion checks
 

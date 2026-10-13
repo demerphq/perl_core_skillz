@@ -72,8 +72,9 @@ type. Do not stringify an accumulated exception and later treat that text as
 the canonical state. Stringification is a presentation boundary.
 
 Keep source locations in diagnostics distinct from the exception's
-propagation stack. The exception stack identifies where the exception was
-thrown or propagated. It does not identify where each error arose inside
+propagation context. Current exceptions record origin and rethrow sites,
+not full stack traces. A future exception stack would identify where the
+exception was thrown or propagated. It does not identify where each error arose inside
 compiled source. For example, a failed `require` can have propagation context
 up to the `require` call and diagnostic locations in the file being compiled.
 Represent both when the scenario needs them, and do not use the exception
