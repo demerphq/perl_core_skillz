@@ -1,79 +1,70 @@
-# Perl Core Agent Skills
+# Perl and XPerl Agent Skills
 
-This repository contains the legacy mirror of the agent guidance and
-subsystem skills used when developing Perl core.
+This repository mirrors guidance maintained in `perl/.agents/skills/`.
+Generic Perl skills and XPerl-specific skills are separate packages:
 
-The canonical source is maintained in the Perl checkout at:
+- `perl_agents/skills/` contains generic Perl-core development guidance.
+- `xperl_agents/skills/` contains XPerl-specific guidance, including structured
+  exceptions, diagnostic migration, and diagnostic inventory.
 
-```text
-perl/.agents/skills/
-```
+XPerl uses the generic skills together with its specialized package. Ordinary
+Perl checkouts use the generic package. XPerl skill names begin with `xperl-`
+and their descriptions identify their scope.
 
-In this repository, the mirrored skills are kept under:
-
-```text
-perl_agents/skills/
-```
-
-The mirror exists for tooling or checkouts that still expect the historical
-`perl_agents/` layout. Make substantive skill changes in the canonical Perl
-checkout first, then update this mirror.
+Make substantive skill changes in the canonical checkout first. Each mirrored
+skill file must be byte-identical to its canonical counterpart. The union of
+both packages corresponds to the canonical skill tree.
 
 ## Repository layout
 
-- `AGENTS.md` — guidance for this mirror repository.
-- `CLAUDE.md` — concise pointer to `AGENTS.md`.
-- `perl_agents/skills/` — mirrored Perl-core skill definitions and references.
-- `perl_agents/AGENTS.md` and `perl_agents/CLAUDE.md` — guidance for the
-  historical package layout.
-- `sync-agent-skills` — checker and synchronizer for the guidance and skill
-  tree.
+- `AGENTS.md` and `CLAUDE.md` describe this mirror repository.
+- `perl_agents/` provides generic skills and guidance for the historical layout.
+- `xperl_agents/` provides the XPerl supplement and its scope guidance.
+- `sync-agent-skills` checks or updates the selected packages.
 
-The `AGENTS.md` and `CLAUDE.md` files use path-adjusted wording where needed;
-the skill files themselves should be byte-identical to the canonical tree.
-
-## Synchronizing the mirror
+## Synchronizing
 
 Run these commands from this repository's root:
 
 ```sh
+# Generic Perl skills and guidance.
 ./sync-agent-skills --check
 ./sync-agent-skills --sync
+
+# Generic skills and the XPerl supplement.
+./sync-agent-skills --check --xperl
+./sync-agent-skills --sync --xperl
 ```
 
-`--check` is non-mutating and is the normal verification command. `--sync`
-copies missing or changed guidance and skill files from the canonical Perl
-checkout to the mirror.  It adjusts the repository-specific paths in
-`AGENTS.md` and `CLAUDE.md` for the destination layout.  This is the default
-direction and can be written explicitly as `--from-perl`.
+The default source is the sibling `perl` checkout. Provide another checkout
+path as the final argument when needed. `--check` changes no files; `--sync`
+copies missing or changed files. Wrapper paths are adapted for the destination.
 
-Use `--from-mirror` to reverse the direction. This is useful when restoring
-`AGENTS.md`, `CLAUDE.md`, or the skill tree to a Perl branch which does not
-contain them, or after independently reviewing changes made in the mirror:
+## Restoring a checkout
 
-```sh
-./sync-agent-skills --check --from-mirror
-./sync-agent-skills --sync --from-mirror
-```
-
-If the Perl checkout is not the sibling directory named `perl`, provide it
-explicitly:
+Use `--from-mirror` to restore a missing skill tree or to propagate reviewed
+mirror changes back to the canonical checkout:
 
 ```sh
-./sync-agent-skills --check /path/to/perl
-./sync-agent-skills --sync /path/to/perl
+# Ordinary Perl: generic skills only.
 ./sync-agent-skills --sync --from-mirror /path/to/perl
+
+# XPerl: generic skills and its supplement.
+./sync-agent-skills --sync --from-mirror --xperl /path/to/xperl
 ```
 
-Use `--prune` with `--sync` only when files which exist only in the destination
-have been reviewed and should be removed.
+XPerl skills are never copied by a generic restoration. Existing XPerl skills
+in the destination are outside the scope of a generic check or synchronization.
+Use `--xperl` to maintain them. The checker also recognizes the historical
+`perl-structured-*` skill names as XPerl-specific.
 
-## Updating skills
+Use `--prune` with `--sync` only after reviewing destination-only files.
+Pruning follows the selected scope.
 
-1. Edit the canonical skill under `perl/.agents/skills/`.
-2. Run the relevant Perl validation from the Perl checkout.
-3. Run `./sync-agent-skills --sync` here.
-4. Confirm `./sync-agent-skills --check` passes and review the resulting diff.
+## Updating guidance
 
-Keep changes focused and update the relevant `SKILL.md` reference material
-when the workflow or commands described by a skill change.
+1. Edit the canonical skills and their references.
+2. Prefix XPerl-specific skill names with `xperl-` and state that scope in their
+   descriptions. Keep general improvements in the generic skills.
+3. Synchronize the appropriate packages and check them in both directions.
+4. Review and commit the mirror changes.

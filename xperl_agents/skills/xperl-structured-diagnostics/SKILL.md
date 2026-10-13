@@ -1,12 +1,15 @@
 ---
-name: perl-structured-diagnostics
-description: Convert legacy Perl core diagnostics to typed catalog entries and generated symbolic macros.
+name: xperl-structured-diagnostics
+description: Convert XPerl diagnostics to typed catalog entries and generated symbolic macros.
 ---
 
 # Structured diagnostic migration
 
+This skill applies to XPerl's structured exception implementation. Do not
+apply its APIs or migration requirements to an ordinary Perl checkout.
+
 For the exception container and warning/error disposition model, also follow
-[`perl-structured-exceptions`](../perl-structured-exceptions/SKILL.md).
+[`xperl-structured-exceptions`](../xperl-structured-exceptions/SKILL.md).
 
 Use this workflow when converting a Perl core diagnostic from a legacy
 `croak`, `warn`, `DIE`, or parser `yyerror` call into the generated diagnostic
@@ -236,10 +239,10 @@ delivery. A warning promoted to an error is not sent to `__WARN__`. Keep
 contracts differ, while routing their diagnostics through the same aggregate
 delivery process. If no hook handles delivery, use the normal diagnostic
 output path to render the aggregate once, preserving the order of interleaved
-warnings and errors. Both `__WARN__` and `__DIE__` receive two arguments. The
-first is the compatibility value for that hook, and the second is always the
-canonical `XPerl::Exception`. For a reference exception, the first argument
-preserves the original reference.
+warnings and errors. The legacy `__WARN__` and `__DIE__` hooks keep their
+one-argument signatures. `${^CUR_ERROR_OBJ}` exposes the canonical
+`XPerl::Exception` while either hook runs. For a reference exception, the
+legacy hook argument preserves the original reference.
 
 Use the same pending accumulator across nested parser operations. For example,
 `scan_const()` appends diagnostics while it processes one quoted string, and

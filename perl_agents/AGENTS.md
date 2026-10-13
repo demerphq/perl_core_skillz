@@ -47,6 +47,9 @@ this mirror, or use `./sync-agent-skills --sync` to update it. Use
 when restoring the guidance and skill tree to a Perl branch which does not
 contain them.
 
+XPerl-specific skills are kept separately in `../xperl_agents/skills/`.
+Include them with `--xperl` only when the target checkout is XPerl.
+
 ## Core API design
 
 When adding experimental core functionality, prefer a builtin function over a

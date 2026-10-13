@@ -1,25 +1,13 @@
-This directory is a legacy mirror of the Perl-core repository agent skills.
+This package contains the generic Perl-core agent skills.
 
-The canonical guidance and skill tree now live in the sibling `perl`
-checkout: `../../perl/AGENTS.md`, `../../perl/CLAUDE.md`, and
-`../../perl/.agents/skills/`. Keep this mirror synchronized when those files are
-updated.
+The canonical source is ../../perl/.agents/skills/. Generic skills use perl-*
+names. XPerl-specific skills use xperl-* names and are mirrored separately in
+../xperl_agents/skills/. They are a supplement for XPerl checkouts.
 
-This directory contains the mirror skill files under `skills/`; its
-`AGENTS.md` and `CLAUDE.md` describe how to use them in this legacy layout.
+From the perl_core_skillz repository root:
 
-From the `perl_core_skillz` checkout, check or update this mirror with:
+    ./sync-agent-skills --check
+    ./sync-agent-skills --sync
+    ./sync-agent-skills --sync --from-mirror /path/to/perl
 
-```sh
-./sync-agent-skills --check
-./sync-agent-skills --sync
-./sync-agent-skills --sync --from-mirror
-```
-
-In short:
-
-- Edit the canonical files in `../../perl/` first.
-- Propagate changes to `skills/` when maintaining this mirror.
-- Use `--from-mirror` only after reviewing mirror changes or when restoring a
-  missing canonical skill tree.
-- Run validation from the `perl` checkout after skill edits.
+Add --xperl only when maintaining or restoring XPerl guidance.

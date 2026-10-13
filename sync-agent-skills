@@ -13,15 +13,18 @@ sub usage {
     die <<'USAGE';
 Usage: ./sync-agent-skills [--check|--sync]
                            [--from-perl|--from-mirror]
+                           [--xperl]
                            [--prune] [PERL_ROOT]
 
 The defaults are --check and --from-perl. The Perl guidance lives in
 PERL_ROOT/AGENTS.md, PERL_ROOT/CLAUDE.md, and PERL_ROOT/.agents/skills; the
 legacy mirror is under perl_agents in this repository.
+XPerl-specific skills are under xperl_agents and require --xperl.
 
 --sync         Copy changed and missing source files to the destination.
 --from-perl    Use the Perl skill tree as the source (the default).
 --from-mirror  Use the legacy mirror as the source.
+--xperl        Include XPerl skills as well as generic Perl skills.
 --prune        With --sync, remove destination files absent from the source.
 USAGE
 }
@@ -30,6 +33,7 @@ my $mode = 'check';
 my $direction = 'from-perl';
 my $direction_seen;
 my $prune = 0;
+my $include_xperl = 0;
 my @args;
 for my $arg (@ARGV) {
     if ($arg eq '--check') {
@@ -46,6 +50,9 @@ for my $arg (@ARGV) {
     }
     elsif ($arg eq '--prune') {
         $prune = 1;
+    }
+    elsif ($arg eq '--xperl') {
+        $include_xperl = 1;
     }
     elsif ($arg eq '--help' || $arg eq '-h') {
         usage();
@@ -71,6 +78,7 @@ die "Perl checkout not found: $perl_root\n" unless -d $perl_root;
 
 my $perl_skills = File::Spec->catdir($perl_root, '.agents', 'skills');
 my $mirror_skills = File::Spec->catdir($mirror_root, 'perl_agents', 'skills');
+my $xperl_skills = File::Spec->catdir($mirror_root, 'xperl_agents', 'skills');
 my $perl_wrappers = $perl_root;
 my $mirror_wrappers = File::Spec->catdir($mirror_root, 'perl_agents');
 die "perl_core_skillz checkout not found: $mirror_root\n" unless -d $mirror_root;
@@ -91,6 +99,42 @@ sub relative_files {
         },
     }, $root);
     return sort @files;
+}
+
+sub is_xperl_skill {
+    my ($file) = @_;
+    return $file =~ m{\Axperl-}
+        || $file =~ m{\Aperl-structured-(?:exceptions|diagnostics|diagnostic-inventory)/};
+}
+
+# Scope the file list before comparing or pruning. A generic restoration
+# leaves an existing XPerl supplement untouched.
+sub selected_files {
+    my ($root, $canonical) = @_;
+    my @files = -d $root ? relative_files($root) : ();
+
+    if ($canonical) {
+        @files = grep { $include_xperl || !is_xperl_skill($_) } @files;
+    }
+    else {
+        die "XPerl skill found in generic mirror: $_\n"
+            for grep { is_xperl_skill($_) } @files;
+
+        if ($include_xperl && -d $xperl_skills) {
+            my @xperl_files = relative_files($xperl_skills);
+            die "generic skill found in XPerl mirror: $_\n"
+                for grep { !is_xperl_skill($_) } @xperl_files;
+            push @files, @xperl_files;
+        }
+    }
+
+    return @files;
+}
+
+sub skill_path {
+    my ($root, $canonical, $file) = @_;
+    $root = $xperl_skills if !$canonical && is_xperl_skill($file);
+    return File::Spec->catfile($root, $file);
 }
 
 sub same_file {
@@ -126,6 +170,11 @@ repository, run `./sync-agent-skills --check` to verify its legacy mirror, or
 use `./sync-agent-skills --sync` to update it. Use `--from-mirror` to restore
 the guidance and skill tree to a Perl branch which does not contain them.
 
+Generic skills are mirrored under `perl_agents/skills/`. Skills named
+`xperl-*` apply only to XPerl and are mirrored under `xperl_agents/skills/`.
+Use `--xperl` with the synchronizer to include those skills. Omit it when
+restoring guidance for an ordinary Perl checkout.
+
 PERL_AGENTS
 ## Agent Skills
 
@@ -138,6 +187,9 @@ this mirror, or use `./sync-agent-skills --sync` to update it. Use
 `--from-mirror` to reverse the direction after reviewing mirror changes or
 when restoring the guidance and skill tree to a Perl branch which does not
 contain them.
+
+XPerl-specific skills are kept separately in `../xperl_agents/skills/`.
+Include them with `--xperl` only when the target checkout is XPerl.
 
 MIRROR_AGENTS
         $data =~ s/^## Agent Skills\n.*?(?=^## )/$section/ms
@@ -178,13 +230,15 @@ sub write_file {
     chmod($mode, $file) or die "chmod $file: $!\n";
 }
 
-my %source = map { $_ => 1 } relative_files($source);
-my %target = map { $_ => 1 } (-d $target ? relative_files($target) : ());
+my $source_is_canonical = $direction eq 'from-perl';
+my $target_is_canonical = !$source_is_canonical;
+my %source = map { $_ => 1 } selected_files($source, $source_is_canonical);
+my %target = map { $_ => 1 } selected_files($target, $target_is_canonical);
 my %all = map { $_ => 1 } keys(%source), keys(%target);
 my (@missing, @different, @extra);
 for my $file (sort keys %all) {
-    my $left = File::Spec->catfile($source, $file);
-    my $right = File::Spec->catfile($target, $file);
+    my $left = skill_path($source, $source_is_canonical, $file);
+    my $right = skill_path($target, $target_is_canonical, $file);
     if (!$source{$file}) {
         push @extra, $file;
     }
@@ -226,15 +280,15 @@ if ($mode eq 'check') {
             $wrapper_problem = 1;
         }
     }
-    print "guidance and skill trees are synchronized\n"
+    print "guidance and selected skill trees are synchronized\n"
         unless @missing || @different || @extra || $wrapper_problem;
     exit(@missing || @different || @extra || $wrapper_problem ? 1 : 0);
 }
 
 make_path($target) unless -d $target;
 for my $file (@missing, @different) {
-    my $left = File::Spec->catfile($source, $file);
-    my $right = File::Spec->catfile($target, $file);
+    my $left = skill_path($source, $source_is_canonical, $file);
+    my $right = skill_path($target, $target_is_canonical, $file);
     my ($volume, $directories) = File::Spec->splitpath($right);
     make_path($directories) unless -d $directories;
     copy($left, $right) or die "copy $left -> $right: $!\n";
@@ -243,7 +297,7 @@ for my $file (@missing, @different) {
 }
 if ($prune) {
     for my $file (@extra) {
-        my $right = File::Spec->catfile($target, $file);
+        my $right = skill_path($target, $target_is_canonical, $file);
         unlink $right or die "unlink $right: $!\n";
         print "removed $file\n";
     }

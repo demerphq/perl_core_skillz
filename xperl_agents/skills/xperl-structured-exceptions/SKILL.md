@@ -1,14 +1,17 @@
 ---
-name: perl-structured-exceptions
-description: Apply the structured exception model when changing Perl core exception handling or migrating error and warning paths.
+name: xperl-structured-exceptions
+description: Apply XPerl structured exceptions when changing its exception handling or migrating error and warning paths.
 ---
 
-# Structured exceptions in Perl core
+# Structured exceptions in XPerl
+
+This skill applies to XPerl's structured exception implementation. Do not
+apply its APIs or migration requirements to an ordinary Perl checkout.
 
 Use this guidance when changing exception construction, propagation, warning
 handling, or converting a core error or warning call site. For catalog entries,
 generated macros, and regeneration, also follow
-[`perl-structured-diagnostics`](../perl-structured-diagnostics/SKILL.md).
+[`xperl-structured-diagnostics`](../xperl-structured-diagnostics/SKILL.md).
 For the current implementation status and remaining work, consult
 `planning/perl-core-structured-errors.md` in the Perl checkout.
 
@@ -76,6 +79,31 @@ up to the `require` call and diagnostic locations in the file being compiled.
 Represent both when the scenario needs them, and do not use the exception
 stack as a substitute for compilation locations.
 
+When rendering an exception, pass each diagnostic renderer a shared context
+containing the exception and the diagnostic's current index. A renderer may
+use neighboring diagnostics or shared render state when a message needs
+context, such as associating a hint with the preceding diagnostic. Keep that
+association in rendering logic rather than merging the diagnostic records.
+Standalone diagnostic rendering has no surrounding context, so it must still
+produce a complete message and include that diagnostic's own source location.
+Exception rendering must walk the live diagnostics array forward and
+re-fetch it for each index. Do not autovivify missing entries or assume the
+array remains the same size or object while a diagnostic is rendered.
+
+When earlier diagnostics need context supplied by a later diagnostic, keep
+them as separate entries in chronological order. Mark each earlier entry
+`light` and set `context_follows_index` to the later entry's zero-based index
+in the exception's `messages` array. Capture the current message count before
+adding the tail, append the tail, then mark the intervening diagnostics. The
+link is an array index, not a duplicated diagnostic ID or copied location.
+Renderers must check the live array after formatting parameters, since
+overloaded stringification can mutate it. If the tail has disappeared, render
+the light diagnostic's own message and location and explain that its context
+is unavailable. Standalone rendering must also produce a useful message.
+Keep this flat representation for related diagnostics whose records remain
+independently meaningful. Reconsider nesting only when a diagnostic needs to
+own a reusable group of subordinate records.
+
 ## Migrating string accumulators
 
 Look for `SV *` or character buffers that collect warning text for later
@@ -119,8 +147,13 @@ or die hooks. Its diagnostic content changes are visible to those hooks and
 to rendering. It may promote a warning to an error, but an error's severity
 must not be downgraded. Recheck disposition after the hook. A promoted
 warning follows the fatal path and is not sent to `__WARN__`. Each warning
-sent to `__WARN__` must use its rendered message, including source location,
-while the second argument remains the aggregate canonical exception.
+sent to `__WARN__` uses its legacy message value, including source location.
+The legacy `__WARN__` and `__DIE__` hooks retain their one-argument
+signatures. During either hook, `${^CUR_ERROR_OBJ}` exposes the canonical
+exception currently being delivered. A warning raised inside `__DIE__` goes
+directly to `__WARN__` without starting a new exception episode. If that
+warning hook throws, its exception replaces the active fatal and does not
+recursively invoke `__DIE__`.
 
 ## Review checklist
 

@@ -1,13 +1,16 @@
 ---
-name: perl-structured-diagnostic-inventory
-description: Find and group unmanaged Perl core diagnostics for migration to the generated catalog.
+name: xperl-structured-diagnostic-inventory
+description: Find and group unmanaged XPerl diagnostics for migration to its generated catalog.
 ---
 
 # Finding and grouping unconverted diagnostics
 
+This skill applies to XPerl's structured exception implementation. Do not
+apply its APIs or migration requirements to an ordinary Perl checkout.
+
 When classifying a candidate as a warning or error, preserve the structured
 exception model in
-[`perl-structured-exceptions`](../perl-structured-exceptions/SKILL.md):
+[`xperl-structured-exceptions`](../xperl-structured-exceptions/SKILL.md):
 diagnostics accumulate in order, warning-only exceptions use warning
 handling, and an exception containing an error uses error handling.
 
