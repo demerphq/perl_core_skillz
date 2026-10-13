@@ -294,6 +294,22 @@ number of definitions. The source guard rejects literal bindings passed
 directly to shared macros. Runtime values can use a shared macro or a
 configured wrapper that supplies the remaining fixed parameters.
 
+## Preserve Unicode when editing the catalog
+
+`diag_conf.pl` has no `use utf8` declaration. Use named character escapes
+such as `\N{LATIN SMALL LETTER E WITH ACUTE}` for non-ASCII literals in that
+file. Pasting UTF-8 octets as source literals can turn them into Latin-1
+characters and double encode the resulting templates during regeneration.
+External UTF-8 text must be decoded before passing it to the catalog writer.
+JSON translation import should supply decoded character strings.
+
+For known corrupt data, `utf8::repeat_decode($text, 1)` can remove repeated
+encoding. A template with mixed correct Unicode and corrupt fragments may
+require repairing only the identified fragments. Check intended code points
+and rendered text, not just schema validity or escaping. Keep repair scripts
+separate from regeneration: use the built interpreter for this new runtime
+API, and the environment Perl for writing and regenerating the catalog.
+
 ## Regenerate and validate
 
 Run regeneration with the environment Perl. It normalizes the catalog with
