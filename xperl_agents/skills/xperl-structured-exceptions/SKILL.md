@@ -165,14 +165,21 @@ Test these properties whenever changing hook invocation or capture state.
 re-enter it. A warning from that hook is captured without invoking `__WARN__`.
 Its die stops the handler and supplies a replacement for the legacy die stage.
 A dying warning hook stops its own handler, then delivery continues through
-remaining diagnostics before one final application unwind. `__DIE__` is
-visited at most once per delivery attempt. A later catch and rethrow of the
-same object can visit it again. Only `warn` and `die` are captured. Explicit
-`print STDERR` and file logging remain immediate side effects.
+remaining diagnostics before one final application unwind.
+Legacy hooks receive one rendered value per logical group, with original
+user-reference identity preserved. A group contains one primary severity and
+its hints or context. Independent warnings and errors remain separate groups.
+Finish automatic STDERR output for a group before invoking the next group's
+hook. Caught errors have no automatic fatal output. Unwind the application
+once after delivery finishes. A replacement does not recursively revisit the
+same die hook, but later independent error groups can visit it. Pure compile
+error batches and light diagnostics with their tail are delivered together.
+Nonfinal textual die-hook arguments include a localized unwind-deferred hint.
+Explicit `print STDERR` in a hook is immediate and is never intercepted.
 
 The private delivery journal retains original diagnostic groups and links
-replacement records for JSON/Dumper debugging. These originals share their
-diagnostic objects, so sanitization before delivery also applies to the
+replacement records for explicit `as_json()` inspection. These originals
+share their diagnostic objects, so sanitization before delivery also applies to the
 journal. Do not copy sensitive values into detached history records. This
 journal is development data, not a stable propagation-history API.
 
@@ -186,13 +193,22 @@ first nonempty `LC_ALL`, `LC_MESSAGES`, or `LANG` environment setting and uses
 its language prefix. Missing translations fall back to English. This locale
 choice is separate from detecting terminal encoding or respecting IO layers.
 
-`JSON`, `JSONL`, and `Dumper` are locale-independent structured modes. JSONL
-emits one diagnostic group per line, including attached hints or following
-location context. JSON and Dumper retain the whole debug representation.
-`render($setting)` accepts the same settings. `render_as_annotated($language)`
-is the descriptive name for the metadata format; `render_as_modern` remains
-an alias. Preserve the legacy one-argument hook interfaces when selecting a
-render mode, including original reference identity where required.
+The optional third setting component is `JSON` or `Dumper`, such as
+`fr:legacy:JSON`. Both produce one physical line per logical message group,
+containing `schema`, translated `message`, primary `type`, and `diagnostics`.
+Fatalized warnings use `FATAL_ERROR` for the group type and retain a `fatal`
+flag in the diagnostic record.
+JSON/JSONL and Dumper/DumperL are aliases using English legacy text when given
+alone. Every format uses the same immediate group output path through legacy
+hooks. Hook rewrites need not preserve serialization validity.
+
+The serializers select defined fields in C without loading modules or dumping
+private hashes. Each diagnostic supports `render_as_json()` and
+`render_as_dumper()`. Explicit exception `as_json()` remains a whole-object
+inspection API. To inspect private contents, use Data::Dumper in `__EXCEPT__`
+or inspect `${^CUR_ERROR_OBJ}`. `render($setting)` shares the setting parser.
+`render_as_annotated($language)` names the metadata text format, with
+`render_as_modern` retained as an alias.
 
 ## Review checklist
 

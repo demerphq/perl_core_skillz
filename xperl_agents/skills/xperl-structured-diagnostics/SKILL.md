@@ -231,27 +231,27 @@ returns or unwinds. During compilation, the parser decides when to flush based
 on whether an error is continuable and whether parsing can safely continue.
 Warnings and errors can both accumulate in source order. A flush
 calls `__EXCEPT__` once with the complete canonical exception, then rechecks
-the diagnostics. It calls `__WARN__` once for each diagnostic that remains a
-warning, in source order. Errors visit `__DIE__` at most once per delivery
-attempt. After remaining diagnostics have been handled, delivery unwinds once. Warning-only batches finish after warning
-delivery. A warning promoted to an error is not sent to `__WARN__`. Keep
-`croak` and `die` producer APIs distinct where their call-site or control-flow
-contracts differ, while routing their diagnostics through the same aggregate
-delivery process. If no hook handles delivery, use the normal diagnostic
-output path to render the aggregate once, preserving the order of interleaved
-warnings and errors. The legacy `__WARN__` and `__DIE__` hooks keep their
-one-argument signatures. `${^CUR_ERROR_OBJ}` exposes the canonical
-`XPerl::Exception` while either hook runs. For a reference exception, the
-legacy hook argument preserves the original reference.
+the diagnostics.
+Legacy hooks receive one rendered value per logical group, with original
+user-reference identity preserved. A group contains one primary severity and
+its hints or context. Independent warnings and errors remain separate groups.
+Finish automatic STDERR output for a group before invoking the next group's
+hook. Caught errors have no automatic fatal output. Unwind the application
+once after delivery finishes. A replacement does not recursively revisit the
+same die hook, but later independent error groups can visit it. Pure compile
+error batches and light diagnostics with their tail are delivered together.
+Nonfinal textual die-hook arguments include a localized unwind-deferred hint.
+Explicit `print STDERR` in a hook is immediate and is never intercepted.
+Keep `croak` and `die` producer APIs distinct where their control-flow
+contracts differ. `${^CUR_ERROR_OBJ}` exposes the canonical aggregate during
+legacy hooks, which retain their one-argument signatures.
 
 Use the same pending accumulator across nested parser operations. For example,
 `scan_const()` appends diagnostics while it processes one quoted string, and
 the compiler decides when the shared accumulator is ready to flush. A
 successful compile must flush any accumulated exception when compilation
-finishes. The flush delivers all remaining warnings individually in source
-order, then throws the aggregate once if it contains an error. If no hook
-handles delivery, render the aggregate once through the normal diagnostic
-output path. Runtime code flushes the shared accumulator before its owner
+finishes. Deliver remaining groups in source order, then throw the aggregate
+once if it contains an error. Runtime code flushes the shared accumulator before its owner
 returns or unwinds. Do not make a low-level helper choose the flush point.
 
 Never assemble sentence fragments in a parser helper. Return the diagnostic
@@ -307,7 +307,7 @@ git diff --check
 For parser changes, rebuild the affected objects or the core binary and run:
 
 ```sh
-CCACHE_DIR=/home/demerphq/git_tree/perldev/.ccache make -j2 perl
+CCACHE_DIR=/home/demerphq/git_tree/perldev/.ccache make -j10 perl
 ./perl -Ilib t/comp/parser.t
 ```
 
@@ -328,7 +328,8 @@ Compile-time producers may behave differently in top-level compilation and
 nested `eval`. If a path is guarded by `!PL_in_eval`, an `eval q{...}` test can
 bypass its recover-and-append branch. Test that behavior in a child interpreter
 compiling a top-level script, and use `PERL_DIAG_RENDER=Dumper` to check the
-resulting diagnostic objects and their order.
+selected diagnostic fields and their order. For private hash inspection,
+call Data::Dumper from `__EXCEPT__` instead.
 
 ## Review checklist
 
