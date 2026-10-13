@@ -147,7 +147,8 @@ or die hooks. Its diagnostic content changes are visible to those hooks and
 to rendering. It may promote a warning to an error, but an error's severity
 must not be downgraded. Recheck disposition after the hook. A promoted
 warning follows the fatal path and is not sent to `__WARN__`. Each warning
-sent to `__WARN__` uses its legacy message value, including source location.
+sent to `__WARN__` uses its selected rendered value, including source
+location in text modes. Reference-valued warnings keep their original reference.
 The legacy `__WARN__` and `__DIE__` hooks retain their one-argument
 signatures. During either hook, `${^CUR_ERROR_OBJ}` exposes the canonical
 exception currently being delivered. A warning raised inside `__DIE__` goes
@@ -174,6 +175,24 @@ replacement records for JSON/Dumper debugging. These originals share their
 diagnostic objects, so sanitization before delivery also applies to the
 journal. Do not copy sensitive values into detached history records. This
 journal is development data, not a stable propagation-history API.
+
+## Rendering controls
+
+`${^DIAG_RENDER}` controls exception stringification at render time. Startup
+initializes it from `PERL_DIAG_RENDER`, defaulting to `auto:legacy`. Assignments
+and `local` affect existing caught exceptions as well as newly delivered ones.
+Text modes are `language:legacy` and `language:annotated`. `auto` chooses the
+first nonempty `LC_ALL`, `LC_MESSAGES`, or `LANG` environment setting and uses
+its language prefix. Missing translations fall back to English. This locale
+choice is separate from detecting terminal encoding or respecting IO layers.
+
+`JSON`, `JSONL`, and `Dumper` are locale-independent structured modes. JSONL
+emits one diagnostic group per line, including attached hints or following
+location context. JSON and Dumper retain the whole debug representation.
+`render($setting)` accepts the same settings. `render_as_annotated($language)`
+is the descriptive name for the metadata format; `render_as_modern` remains
+an alias. Preserve the legacy one-argument hook interfaces when selecting a
+render mode, including original reference identity where required.
 
 ## Review checklist
 
