@@ -245,28 +245,11 @@ git diff --check
 Then rerun the focused inventory and relevant build or test. Commit each
 reviewable batch separately.
 
-## Generic wrappers need a separate inventory
+## Regex diagnostics
 
-The emitter inventory does not prove that every core failure has a specific
-catalog identity. In particular, `regcomp.c` uses `vFAIL*` wrappers whose
-messages enter generic diagnostic records. Audit these calls separately:
-
-```sh
-perl -e '
-  require "./regen/diag_lib.pm";
-  my $source = Diag::Migration::read_source("regcomp.c");
-  my %count;
-  for my $call (Diag::Migration::calls($source, qr/vFAIL(?:[234]|[23]utf8f)?/)) {
-    $count{$call->{name}}++;
-  }
-  print "$_ $count{$_}\n" for sort keys %count;
-'
-```
-
-Classify producer-owned literals and formats for catalog migration. Retain
-opaque messages only at documented external or propagation boundaries. Keep
-these wrapper candidates in the tangible plan even when the normal inventory
-has no entries.
+The former `vFAIL*` regex wrappers have been removed. For future regex
+diagnostic audits, search `reg*.c` and `reg*.h`, then run
+`perl Porting/diag_inventory.pl` to find calls that bypass the catalog.
 
 ## Completion checks
 

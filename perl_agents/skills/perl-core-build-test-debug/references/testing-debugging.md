@@ -114,6 +114,11 @@ together.  If a changed `Makefile.PL` causes the first `make` to regenerate
 the Makefile and stop with a request to rerun, rerun the same make command;
 that first pass is configuration refresh, not a final build result.
 
+`make regen_invlist` is an exception to the usual environment-Perl rule.
+Its `RUN_PERL` intentionally uses the interpreter and libraries being built,
+so the inversion lists match the current tree's newest Unicode data. Do not
+substitute an installed host Perl with its own Unicode library tables.
+
 ## Porting Tests
 
 Use `t/porting/*.t` for checks around generated files, docs, metadata, exports, manifests, and policy.

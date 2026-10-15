@@ -26,6 +26,13 @@ for the message text and its meaning. Reuse an existing diagnostic ID when the
 message is the same. Do not create duplicate entries merely because the call
 site is in a different subsystem.
 
+For a renderer-owned summary or context wrapper, use `emit.api => 'RENDER'`.
+It generates `PERL_FORMAT_<CODE>(language, values)` and shares the ordinary
+catalog validation, selectors, translations, and English fallback. It does
+not create or deliver a diagnostic. Pass an AV of display strings followed
+by selector-only strings in metadata order. Keep the original diagnostic
+records when formatting a group.
+
 ## Add or reuse the definition
 
 Add a leaf hash under `diagnostics->{severity}{kind}{code}` in `diag_conf.pl`.
@@ -56,10 +63,12 @@ diagnostics => {
 },
 ```
 
-`message.args` are values substituted into the diagnostic template.
-`emit.args` are parameters required by the underlying API, such as the SV
-encoding flags passed to `yyerror_pv`. Use no `emit.args` when plain `yyerror`
-is sufficient.
+`message.args` defines named diagnostic arguments. An argument can be built
+from one or more macro inputs and can serve as a selector, a template value,
+or both. Selector-only arguments need not appear in the rendered parameter
+list. `emit.args` describes extra inputs required by the delivery API, such
+as the SV encoding flags passed to `yyerror_pv`. Use no `emit.args` when plain
+`yyerror` is sufficient.
 
 Every parser delivery declares `emit.parser_action`. Use `collect` for ordinary
 accumulation, `recover` for a grammar action that invokes `YYERROR`, and
@@ -281,8 +290,8 @@ Use `PERL_THROW_CWD_CWD_USAGE()` at the call site. The generator supplies
 the fixed signature to the shared `FUNCTION_USAGE` macro. Unbound message
 and delivery parameters remain wrapper arguments in their original order.
 Variants may bind several simple `text` parameters with `format_str => 's'`.
-Use language keys for fixed text. English generation is implemented and
-additional translations remain in the config for future localization.
+Use language keys for fixed text. English is required, and values can be
+provided for each supported translation.
 
 Variant codes and macro names must be globally unique. A variant's `emit.api`
 must be the parent's API or one of its delivery aliases. It inherits the
@@ -313,8 +322,10 @@ API, and the environment Perl for writing and regenerating the catalog.
 ## Regenerate and validate
 
 Run regeneration with the environment Perl. It normalizes the catalog with
-`Data::Dumper`, explicit `Sortkeys` and `Useqq`, preserves its schema POD,
-and checks all three files in `--tap` mode:
+`Data::Dumper`, explicit `Sortkeys` and `Useqq`, preserves its schema POD, and
+writes `perldiag.h`, `perldiag_data.inc`, and `perldiag_helpers.inc` along with
+the normalized catalog and documentation. The shared `regen_lib.pl` handles
+`--tap` for generated-file checks. Check the generator and emitted files with:
 
 ```sh
 perl regen/diag.pl
@@ -354,8 +365,8 @@ call Data::Dumper from `__EXCEPT__` instead.
 - Existing message definitions were searched and reused where appropriate.
 - The new catalog hash has the correct delivery API, severity, default exception kind, and typed
   arguments.
-- `message.args` contains template values. `emit.args` contains only API
-  delivery data.
+- `message.args` defines named input, selector, and template roles;
+  `emit.args` contains delivery-specific inputs.
 - The call site has no free-form diagnostic text or `form()` call.
 - `perldiag.h` and `MANIFEST` were regenerated as required.
 - The focused build and parser test pass.
