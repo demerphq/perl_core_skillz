@@ -201,12 +201,23 @@ return NULL for an unknown language. The experimental builtins
 `ordinal_plural_form($language, $n)` expose them for testing and return undef
 for an unknown language. No fractional counts are supported.
 
-These functions only calculate categories. They do not select templates,
-apply exact-number cases, or resolve language fallback. Exact-number config
+These functions only calculate categories. Selector matching also supports
+exact-number cases, wildcard cases, and language fallback. Exact-number config
 keys are bare numeric strings such as `"0"` and `"21"`, without `=`. Keep
-`other` distinct from `*`. Render-time integration of plural selectors is
-tracked separately in the exception plan; do not assume that adding a plural
-selector field to the config is currently supported.
+`other` distinct from `*`. Each language can define its own selector cases.
+Producer code should pass generated domain-local integer constants for known
+values. Convert dynamic strings at an explicit boundary, and use the shared
+value-to-name helper when a selector value is displayed in a parameter.
+
+## Generated diagnostic namespace
+
+Regeneration owns the diagnostic interface names. Use `perl_` for generated
+types, data, and enum members, `Perl_` for functions, and `PERL_` for macros,
+including guards. Do not add compatibility aliases with the former
+`DIAG_*`, `DIAG_TMPL_*`, or `S_diag_*` names. When registering a new
+`embed.fnc` function for this feature, use the `o` flag to suppress the
+generated short alias and call it by its `Perl_` name with explicit `aTHX_`
+where required. Do not change inherited embedvar naming conventions.
 
 ## Convert the call site
 
@@ -389,6 +400,8 @@ call Data::Dumper from `__EXCEPT__` instead.
   arguments.
 - `message.args` defines named input, selector, and template roles;
   `emit.args` contains delivery-specific inputs.
+- Generated diagnostic data/types/enums use `perl_`, functions use `Perl_`,
+  and macros use `PERL_`. New `embed.fnc` functions suppress short aliases.
 - The call site has no free-form diagnostic text or `form()` call.
 - `perldiag.h` and `MANIFEST` were regenerated as required.
 - The focused build and parser test pass.
