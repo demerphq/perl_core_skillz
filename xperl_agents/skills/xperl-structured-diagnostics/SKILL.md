@@ -186,6 +186,28 @@ individual fragments in parentheses before concatenating them. Preserve this
 restriction when retaining those interfaces; ordinary diagnostic arguments
 must use typed formatters.
 
+## Integer plural rules
+
+Use the shared cardinal or ordinal rule helper rather than choosing English
+`one`/`many` categories in producer code. `diag_conf.pl` owns a shared
+`plural_rules` registry of C expressions. Each language under `languages`
+selects its `cardinal` and `ordinal` rule by name. Regeneration validates
+references, rule kinds, and categories, then emits shared rule macros,
+per-language aliases, and combined dispatch macros in `perldiag_data.inc`.
+Fixed C API bodies remain in `pp_ctl.c`, registered in `embed.fnc`.
+Both C helpers take a language and a `UV n`, return a category string, and
+return NULL for an unknown language. The experimental builtins
+`cardinal_plural_form($language, $n)` and
+`ordinal_plural_form($language, $n)` expose them for testing and return undef
+for an unknown language. No fractional counts are supported.
+
+These functions only calculate categories. They do not select templates,
+apply exact-number cases, or resolve language fallback. Exact-number config
+keys are bare numeric strings such as `"0"` and `"21"`, without `=`. Keep
+`other` distinct from `*`. Render-time integration of plural selectors is
+tracked separately in the exception plan; do not assume that adding a plural
+selector field to the config is currently supported.
+
 ## Convert the call site
 
 Replace the legacy or dynamic call with the generated symbolic macro. The call
