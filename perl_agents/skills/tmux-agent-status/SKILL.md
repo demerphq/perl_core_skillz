@@ -33,6 +33,28 @@ Each agent maintains its own counter. The primary agent coordinates shared
 state: one agent must not clear another agent's unresolved input wait, and
 normal colour requires all agents to be idle.
 
+Use the shared window option `@agent_status_waiting_for_user` as a latch.
+Set it to `1` before requesting attention, including technical sandbox
+approvals. Set both styles amber and notify the primary agent. Subagents
+must relay their question or approval request to the primary conversation
+so the user does not have to open a subagent view to discover it.
+
+Before every activity-colour update, read the shared option and leave the
+colour unchanged if it is `1`. This applies even when that agent has no
+question of its own. The primary agent clears the latch to `0` only after
+all outstanding requests are answered or the user explicitly clears the
+wait, then restores working colour immediately. Do not treat a successful
+operation counter tick as permission to clear the latch.
+
+For example, before an attention request:
+
+```sh
+tmux set-window-option -t "$status_window_id" @agent_status_waiting_for_user 1
+tmux set-window-option -t "$status_window_id" window-status-style 'fg=black,bg=colour214,bold'
+tmux set-window-option -t "$status_window_id" window-status-current-style 'fg=black,bg=colour214,bold'
+tmux refresh-client -S
+```
+
 ## Discover and retain the target
 
 Capture the agent's window ID at the start, using its known pane rather than
