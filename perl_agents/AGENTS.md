@@ -50,6 +50,13 @@ contain them.
 XPerl-specific skills are kept separately in `../xperl_agents/skills/`.
 Include them with `--xperl` only when the target checkout is XPerl.
 
+## Tmux activity status
+
+When working in the user's tmux session, follow
+`.agents/skills/tmux-agent-status/SKILL.md`. Keep the tab colour and terminal
+title symbol current for the whole agent team. Amber input waits take
+priority over the five-operation cyan/green activity indicator.
+
 ## Core API design
 
 When adding experimental core functionality, prefer a builtin function over a
