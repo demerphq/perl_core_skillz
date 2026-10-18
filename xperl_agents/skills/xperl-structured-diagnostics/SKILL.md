@@ -338,26 +338,28 @@ configured wrapper that supplies the remaining fixed parameters.
 
 ## Preserve Unicode when editing the catalog
 
-`diag_conf.pl` has no `use utf8` declaration. Use named character escapes
-such as `\N{LATIN SMALL LETTER E WITH ACUTE}` for non-ASCII literals in that
-file. Pasting UTF-8 octets as source literals can turn them into Latin-1
-characters and double encode the resulting templates during regeneration.
-External UTF-8 text must be decoded before passing it to the catalog writer.
-JSON translation import should supply decoded character strings.
+`diag_conf.pl` is UTF-8 source and declares `use utf8;`. Write printable
+Unicode directly in catalog strings. Regeneration requests Data::Dumper's
+`Useutf8` option when the installed module supports it and has a safe
+compatibility path for older versions. Controls, separators,
+default-ignorable characters, and other non-printing values remain escaped.
+Translation import must supply decoded character strings. Catalog output is
+encoded as UTF-8 once when written.
 
-For known corrupt data, `utf8::repeat_decode($text, 1)` can remove repeated
-encoding. A template with mixed correct Unicode and corrupt fragments may
-require repairing only the identified fragments. Check intended code points
-and rendered text, not just schema validity or escaping. Keep repair scripts
-separate from regeneration: use the built interpreter for this new runtime
-API, and the environment Perl for writing and regenerating the catalog.
+Check the intended code points and rendered text, not just schema validity or
+the source spelling. For proven repeated encoding in a specific value,
+`utf8::repeat_decode($text, 1)` can remove the repeated layer; repair only the
+identified fragments when a template mixes correct and corrupt text. Keep
+repair scripts separate from regeneration; use the environment Perl for
+writing and regenerating the catalog.
 
 ## Regenerate and validate
 
 Run regeneration with the environment Perl. It normalizes the catalog with
-`Data::Dumper`, explicit `Sortkeys` and `Useqq`, preserves its schema POD, and
-writes `perldiag.h`, `perldiag_data.inc`, and `perldiag_helpers.inc` along with
-the normalized catalog and documentation. The shared `regen_lib.pl` handles
+`Data::Dumper`, explicit `Sortkeys` and `Useqq`, plus `Useutf8` when available.
+It preserves schema POD, writes the normalized catalog as UTF-8, and generates
+`perldiag.h`, `perldiag_data.inc`, `perldiag_helpers.inc`, and documentation.
+The shared `regen_lib.pl` handles
 `--tap` for generated-file checks. Check the generator and emitted files with:
 
 ```sh
