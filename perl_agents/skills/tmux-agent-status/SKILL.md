@@ -46,6 +46,12 @@ all outstanding requests are answered or the user explicitly clears the
 wait, then restores working colour immediately. Do not treat a successful
 operation counter tick as permission to clear the latch.
 
+If an anticipated technical approval is not requested and the command starts
+or returns normally, report that resolution immediately. The primary agent
+clears that provisional wait after checking for other pending requests.
+Do not keep amber through a running build merely because approval might have
+been needed, and do not ask the user to clear a wait that has already resolved.
+
 For example, before an attention request:
 
 ```sh
