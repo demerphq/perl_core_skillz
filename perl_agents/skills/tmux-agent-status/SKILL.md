@@ -35,26 +35,31 @@ normal colour requires all agents to be idle.
 
 Use the shared window option `@agent_status_waiting_for_user` as a latch.
 Set it to `1` before requesting attention, including technical sandbox
-approvals. Set both styles amber and notify the primary agent. Subagents
+approvals. When claiming an unset latch, record the requesting agent in
+`@agent_status_wait_owner`. Do not take ownership of an existing wait.
+Set both styles amber and notify the primary agent. Subagents
 must relay their question or approval request to the primary conversation
 so the user does not have to open a subagent view to discover it.
 
 Before every activity-colour update, read the shared option and leave the
 colour unchanged if it is `1`. This applies even when that agent has no
-question of its own. The primary agent clears the latch to `0` only after
-all outstanding requests are answered or the user explicitly clears the
-wait, then restores working colour immediately. Do not treat a successful
-operation counter tick as permission to clear the latch.
+question of its own. Clear the latch to `0` only after all outstanding
+requests are answered or the user explicitly clears the wait, then restore
+working colour immediately. Do not treat a successful operation counter
+tick as permission to clear the latch.
 
-If an anticipated technical approval is not requested and the command starts
-or returns normally, report that resolution immediately. The primary agent
-clears that provisional wait after checking for other pending requests.
-Do not keep amber through a running build merely because approval might have
-been needed, and do not ask the user to clear a wait that has already resolved.
+The requesting agent must clear its own completed technical-approval wait
+immediately after the tool returns or the command starts, provided no other
+request is pending. This includes commands that proceed without an approval
+prompt. Notify the primary agent, but do not wait for it to execute the colour
+change: its turn may have ended. Never clear a wait owned by another agent.
+Do not keep amber through a running build merely because approval was needed,
+and do not ask the user to clear a wait that has already resolved.
 
 For example, before an attention request:
 
 ```sh
+tmux set-window-option -t "$status_window_id" @agent_status_wait_owner "$status_agent_name"
 tmux set-window-option -t "$status_window_id" @agent_status_waiting_for_user 1
 tmux set-window-option -t "$status_window_id" window-status-style 'fg=black,bg=colour214,bold'
 tmux set-window-option -t "$status_window_id" window-status-current-style 'fg=black,bg=colour214,bold'
