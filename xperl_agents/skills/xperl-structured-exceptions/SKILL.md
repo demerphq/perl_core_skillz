@@ -91,19 +91,25 @@ Exception rendering must walk the live diagnostics array forward and
 re-fetch it for each index. Do not autovivify missing entries or assume the
 array remains the same size or object while a diagnostic is rendered.
 
-When earlier diagnostics need context supplied by a later diagnostic, keep
-them as separate entries in chronological order. Mark each earlier entry
-`light` and set `context_follows_index` to the later entry's zero-based index
-in the exception's `messages` array. Capture the current message count before
-adding the tail, append the tail, then mark the intervening diagnostics. The
-link is an array index, not a duplicated diagnostic ID or copied location.
-Renderers must check the live array after formatting parameters, since
-overloaded stringification can mutate it. If the tail has disappeared, render
-the light diagnostic's own message and location and explain that its context
-is unavailable. Standalone rendering must also produce a useful message.
-Keep this flat representation for related diagnostics whose records remain
-independently meaningful. Reconsider nesting only when a diagnostic needs to
-own a reusable group of subordinate records.
+Use a diagnostic's ordered `children` for subordinate records that it owns.
+Keep sibling entries for independent messages that remain chronological.
+Containment is allowed by default, while Note diagnostics are leaf-only.
+`children`, `child_count`, and `append` are shared `DiagGroup` operations;
+they return immediate children and preserve object identity. `contains`
+includes the receiver and its descendants. `has_errors` includes the
+receiver's own fatal severity/error count and nested fatal diagnostics.
+`Exception->messages` remains the compatibility view of its immediate roots.
+Do not flatten containment when traversing or serializing a nested tree.
+
+Some unmigrated producers still use `light` and `context_follows_index` to
+refer to a later context diagnostic. Preserve that behavior while working on
+those paths, but do not introduce new flat tail links when a context diagnostic
+can own the subordinate records. The link remains a live array index and may
+be invalidated by hook edits, so any remaining consumer must re-fetch and
+validate it after formatting callbacks.
+Structured diagnostic, exception, and delivery-group JSON/Dumper records use
+version 2 schemas. Each diagnostic record carries its ordered `children` list;
+exception and delivery envelopes list only their immediate roots.
 
 ## Migrating string accumulators
 
@@ -174,7 +180,7 @@ Finish automatic STDERR output for a group before invoking the next group's
 hook. Caught errors have no automatic fatal output. Unwind the application
 once after delivery finishes. A replacement does not recursively revisit the
 same die hook, but later independent error groups can visit it. Pure compile
-error batches and light diagnostics with their tail are delivered together.
+error batches and their owned context are delivered together.
 Nonfinal textual die-hook arguments include a localized unwind-deferred hint.
 Explicit `print STDERR` in a hook is immediate and is never intercepted.
 

@@ -283,7 +283,7 @@ Finish automatic STDERR output for a group before invoking the next group's
 hook. Caught errors have no automatic fatal output. Unwind the application
 once after delivery finishes. A replacement does not recursively revisit the
 same die hook, but later independent error groups can visit it. Pure compile
-error batches and light diagnostics with their tail are delivered together.
+error batches and their owned context are delivered together.
 Nonfinal textual die-hook arguments include a localized unwind-deferred hint.
 Explicit `print STDERR` in a hook is immediate and is never intercepted.
 Keep `croak` and `die` producer APIs distinct where their control-flow
