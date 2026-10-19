@@ -94,8 +94,12 @@ array remains the same size or object while a diagnostic is rendered.
 Use a diagnostic's ordered `children` for subordinate records that it owns.
 Keep sibling entries for independent messages that remain chronological.
 Containment is allowed by default, while Note diagnostics are leaf-only.
-`children`, `child_count`, and `append` are shared `DiagGroup` operations;
-they return immediate children and preserve object identity. `contains`
+`children`, `child_count`, `append`, `contains`, and `has_errors` are shared
+`DiagGroup` operations. `children` returns immediate references, `append`
+preserves identity, and `contains`/`has_errors` inspect descendants.
+`Diagnostic::derive($children)` returns a new object of the same class and own
+metadata with replacement children, while leaving the source tree unchanged.
+It shallowly preserves references inside the diagnostic metadata. `contains`
 includes the receiver and its descendants. `has_errors` includes the
 receiver's own fatal severity/error count and nested fatal diagnostics.
 `Exception->messages` remains the compatibility view of its immediate roots.
