@@ -145,7 +145,7 @@ in design notes.
 At a propagation boundary, forward an existing `XPerl::Exception` or
 user-thrown reference without stringifying or rewriting it. If context is
 needed, append a diagnostic to the same exception and then throw that object.
-Convert ordinary scalar user errors to `USER_ERROR` where they enter the
+Convert ordinary scalar user errors to `ERROR_USER_TEXT` where they enter the
 structured exception path.
 
 `try`/`catch` accepts one or two lexical variables. In `catch ($value)`, the
