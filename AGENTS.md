@@ -37,11 +37,18 @@ asks for a different approach.
 
 ## Agent Skills
 
-Generic Perl skills live in `perl_agents/skills/`. XPerl-specific skills live
+Standalone skills for module and distribution development with an installed
+Perl live in `deployed_perl_agents/skills/`. This independent package is
+canonical here: edit it directly, keep references self-contained, and validate
+with its documented package and XS smoke checks. Do not apply Perl core build,
+release, MANIFEST, or synchronization requirements to that package. It has no
+dependency on either of the core packages below.
+
+Generic Perl core skills live in `perl_agents/skills/`. XPerl-specific skills live
 in `xperl_agents/skills/` and supplement the generic package for XPerl work.
 Use only the generic package for ordinary Perl checkouts.
 
-The canonical skills live in the sibling `perl/.agents/skills/` tree. Make
+The canonical core skills live in the sibling `perl/.agents/skills/` tree. Make
 substantive changes there first. Run `./sync-agent-skills --sync` here for
 generic guidance, or add `--xperl` to include the XPerl package. Verify with
 `--check` and the same scope. Use `--from-mirror` only after reviewing mirror

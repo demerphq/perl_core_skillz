@@ -1,7 +1,13 @@
-# Perl and XPerl Agent Skills
+# Perl Development Agent Skills
 
-This repository mirrors guidance maintained in `perl/.agents/skills/`.
-Generic Perl skills and XPerl-specific skills are separate packages:
+For module, distribution, and XS development **using an installed Perl**, use
+the independent [deployed-Perl package](deployed_perl_agents/README.md). It is
+maintained in this repository and can be installed on its own. It contains no
+core development workflow or dependency on the packages below.
+
+The core development packages mirror guidance maintained in
+`perl/.agents/skills/`. Generic Perl core skills and XPerl-specific skills are
+separate packages:
 
 - `perl_agents/skills/` contains generic Perl-core development guidance.
 - `xperl_agents/skills/` contains XPerl-specific guidance, including structured
@@ -11,8 +17,9 @@ XPerl uses the generic skills together with its specialized package. Ordinary
 Perl checkouts use the generic package. XPerl skill names begin with `xperl-`
 and their descriptions identify their scope.
 
-Make substantive skill changes in the canonical checkout first. Each mirrored
-skill file must be byte-identical to its canonical counterpart. The union of
+For these core packages, make substantive changes in the canonical checkout
+first. Each mirrored skill file must be byte-identical to its canonical
+counterpart. The union of
 both packages corresponds to the canonical skill tree.
 
 ## Repository layout
@@ -20,9 +27,13 @@ both packages corresponds to the canonical skill tree.
 - `AGENTS.md` and `CLAUDE.md` describe this mirror repository.
 - `perl_agents/` provides generic skills and guidance for the historical layout.
 - `xperl_agents/` provides the XPerl supplement and its scope guidance.
+- `deployed_perl_agents/` provides standalone installed-Perl development skills.
 - `sync-agent-skills` checks or updates the selected packages.
 
 ## Synchronizing
+
+This synchronizer covers the core packages only. Maintain the deployed-Perl
+package directly in this repository; it is outside synchronization and pruning.
 
 Run these commands from this repository's root:
 
@@ -62,6 +73,10 @@ Use `--prune` with `--sync` only after reviewing destination-only files.
 Pruning follows the selected scope.
 
 ## Updating guidance
+
+For deployed-Perl skills, follow the
+[package maintenance instructions](deployed_perl_agents/README.md#maintain-and-validate).
+For the core mirrors:
 
 1. Edit the canonical skills and their references.
 2. Prefix XPerl-specific skill names with `xperl-` and state that scope in their
