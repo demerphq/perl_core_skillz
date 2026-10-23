@@ -27,7 +27,8 @@ it does not create an extra reference or make a borrowed pointer safe forever.
    balanced; adding an increment until a crash disappears is not a proof.
 
 Read [ownership-magic.md](references/ownership-magic.md) for reference ledgers,
-containers, exception cleanup, and magic. Read
+containers, hash iteration, shared hash keys, exception cleanup, and retention
+across callbacks. Read
 [strings.md](references/strings.md) for string conversion and mutation.
 
 Check exact contracts in the target Perl's `perlapi`, particularly ownership,

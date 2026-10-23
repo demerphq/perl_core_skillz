@@ -54,6 +54,68 @@ and re-fetch slots when needed. Hash iteration state can be disturbed by nested
 iteration or callbacks; do not expose an iteration strategy that assumes users
 cannot reenter it.
 
+### Hash iteration
+
+`hv_iterinit()` and `hv_iternext()` use the same iterator state (`HvRITER`,
+`HvEITER`) as the caller's `each()`. Walking a hash with them from inside a
+caller's `while (my ($k, $v) = each %h)` loop restarts that loop every time, so
+it never terminates. Choose one of these strategies:
+
+- For an untied hash that runs no callbacks during the walk, walk the
+  `HvARRAY` buckets directly. This leaves the iterator alone but depends on the
+  bucket layout.
+- Otherwise save `HvRITER_get`, `HvEITER_get` and the `HvLAZYDEL` flag before
+  the walk and restore them after. This works only for untied hashes; a tied
+  hash keeps its iterator in Perl through `FIRSTKEY`/`NEXTKEY` and cannot be
+  restored.
+
+When the caller has deleted its current `each()` entry, perl has unlinked it
+but defers freeing it until the iterator moves (`HvLAZYDEL`). `hv_iterinit()`
+would free it while the caller still holds it. Turn the flag off for the walk
+and put it back together with the saved entry.
+
+If a callback can run between save and restore, the saved entry can be freed:
+while the walk owns `HvEITER`, a deleted entry is freed immediately. Before
+restoring, confirm that the entry is still linked in its bucket. Under
+`PERL_HASH_RANDOMIZE_KEYS` `HvRITER` is a position in iteration order, not a
+bucket number; the bucket is `(riter ^ xhv_rand) & HvMAX`, which
+`PERL_HASH_ITER_BUCKET()` computes. A split changes `xhv_rand`; in that case
+drop the saved entry, since perl documents iteration after insertion as
+undefined. Read `HvAUX` only when `SvOOK` is set on the hash.
+
+`HvRITER`, `HvEITER`, `HvLAZYDEL`, `HvAUX`, `xhv_rand` and
+`PERL_HASH_ITER_BUCKET` are internal details, not public API. Feature-test each
+per supported version and justify its use in a comment.
+
+Test iterator handling with enough keys that several share a bucket: a small
+hash can pass by luck of the hash seed. Bound every loop in such a test so a
+regression fails instead of hanging, and run it under several
+`PERL_HASH_SEED` values.
+
+### Shared hash keys
+
+Keys of hashes with `HvSHAREKEYS` live in the shared string table. A key's
+address is stable only while some entry references it. A cache keyed by key
+address, for example to refer back to an earlier copy of the same key, must
+keep the entry alive across any callback that could delete the key. Otherwise
+a different key can reuse the address and the cache silently points at the
+wrong text.
+
+`newSVhek()` returns a copy-on-write shared-hash-key scalar
+(`SvIsCOW_shared_hash`) that holds a reference to the entry for an ordinary key.
+It returns a private copy instead for a key flagged not shared, and an upgraded
+private copy for a WASUTF8 key: a key supplied as UTF-8 whose characters all fit
+Latin-1, which perl stores downgraded with `HEK_WASUTF8`. A retention or
+deduplication scheme built on `newSVhek()` therefore silently stops covering
+those keys; handle them explicitly and test with them. Keys with the same bytes
+but different UTF8/WASUTF8 flags are separate string-table entries, yet equal
+as hash keys.
+
+Taking an entry reference with `share_hek_hek()` is internal, and its release,
+`unshare_hek()`, is core-only before 5.38. The portable form is to hold a
+shared-hash-key scalar and release it through `SvREFCNT_dec`, letting
+`sv_clear()` drop the entry.
+
 ## Cleanup across errors
 
 Perl conversions, memory allocations, magic, callbacks, warnings configured as
@@ -77,6 +139,12 @@ insufficient. Match allocators: `Newx`/`Newxz`/`Renew` with `Safefree`, library
 allocations with that library's release operation. Check multiplication and
 addition for overflow before allocating from user-controlled counts.
 
+A size declared by untrusted input needs an upper bound, for example
+`SSize_t_MAX`, and must not reach `Newx` unguarded: on allocation failure perl
+prints "Out of memory!" and exits the process. Set `PL_nomemok = TRUE` around
+the allocation, restore it afterwards, and test for NULL so failure becomes a
+catchable croak.
+
 ## Magic and reentry
 
 Use `perlapi` to distinguish a function's source get magic from destination
@@ -95,6 +163,34 @@ decrement can all reenter the module. Keep the current receiver/callback alive,
 avoid half-updated native state, and invalidate stale buffer or container-slot
 pointers. A refcount increment preserves object lifetime, not value immutability.
 
+Before any operation that can run Perl, take owned references
+(`SvREFCNT_inc` plus `SAVEFREESV`) on everything the C code still needs
+afterwards: the inputs, caller-supplied outputs, the object being passed and
+the code to be called. Such operations include get magic, tied `FETCH`,
+serialisation hooks such as `FREEZE`/`THAW`, overloads, allow-list predicates,
+and `DESTROY` triggered by any decrement, including `sv_setsv` overwriting a
+caller-supplied output.
+
+- Retain the CV, not the glob. A callback can `delete $Pkg::{name}` or replace
+  the sub, so a `GvCV()` fetched before the callback can dangle afterwards.
+- A retained input keeps the SV head alive, not its buffer. A callback that
+  assigns to the input frees the PV the C code is reading. Copy the input
+  first, or compare `SvPVX`/`SvCUR` with the captured pointer and length after
+  each callback and croak on a change.
+- Retain container elements along the whole path to the callback, not to a
+  fixed depth. A tied scalar two levels down whose `FETCH` empties the outer
+  container frees the siblings still to be visited. Either retain from the root
+  whenever a callback-capable value may exist, or detect the first such value
+  before its code runs and restart in a retaining mode. A depth-limited
+  predicate is unsafe at any depth.
+
+Before writing into a caller-supplied output scalar, refuse a read-only
+destination with `croak("%s", PL_no_modify)` and reset it with
+`sv_setsv(into, &PL_sv_undef)`. The reset releases any old referent and may run
+`DESTROY`, so do it before capturing input buffer pointers. Repurposing a
+scalar that holds a string into a reference without clearing its POK and COW
+state leaves flags that crash on the next scope exit.
+
 For private extension magic, use a unique `MGVTBL` identity, supported attachment
 APIs, and explicit payload free/duplication rules. Check `mg_findext` preconditions
 before calling it on an arbitrary SV. Do not reuse internal magic implementations
@@ -102,4 +198,6 @@ or remove another extension's magic of the same type.
 
 Sources: `perlguts` sections on Reference Counts and Mortality, Working with AVs/
 HVs, Magic Variables, and Localizing changes; `perlapi` entries for every API
-named above; `perlxs` Returning Values from an XSUB.
+named above; `perlxs` Returning Values from an XSUB; the target `hv.h` and
+`sv.h` for the iterator, shared-key and copy-on-write internals; the
+`embed.fnc` flag legend and `Devel::PPPort` for their availability per version.
