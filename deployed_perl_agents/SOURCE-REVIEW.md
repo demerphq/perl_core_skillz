@@ -99,3 +99,17 @@ outside this package's general Perl/XS scope.
 manual sections supplied module/API, documentation, and compatibility context.
 Historical scaffolding and release suggestions were not turned into mandatory
 version bumps, framework migrations, public uploads, or core development tasks.
+
+## Addendum 2026-10-23
+
+Material added for symbol visibility on older Perls, hash iteration, shared
+hash keys, retention across callbacks, extension sanitizers, and in-repository
+build detection rests on these sources:
+
+| Source | Analysis applied |
+| --- | --- |
+| Installed Perl 5.44.0 `hv.h`, `sv.h`, `embed.h`, `proto.h` | Iterator fields and `PERL_HASH_ITER_BUCKET`, `HvLAZYDEL`, `HVhek_NOTSHARED`, `share_hek_hek`, `SvIsCOW_shared_hash`; guards around short names. Internal details are marked as such and require per-version feature tests. |
+| `embed.fnc` flag legend, Perl 5.40 source checkout | Meaning of `A`, `C`, `p`, `E` and `X` for short-name definition and Windows export. Per-function flags were compared against older tags where cited. |
+| Devel::PPPort 3.73 `--api-info` | Availability reports for functions and their gaps for macros and `Viu` entries. |
+| `perlhacktips` | Sanitizer and compiler-warning guidance, applied to an extension in an uninstrumented Perl. |
+| CI runs on Perl 5.30 to 5.44 | Observed build warnings and load failures for core-only symbols on older Perls. |

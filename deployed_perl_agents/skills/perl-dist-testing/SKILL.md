@@ -28,7 +28,7 @@ framework migration or an added author-only dependency for ordinary users.
 Read [frameworks.md](references/frameworks.md) for Test::More, Test2 editions,
 exception/warning helpers, and testing test tools. Read
 [running-debugging.md](references/running-debugging.md) for focused commands,
-XS test matrices, debugger use, and leak analysis.
+XS test matrices, debugger use, sanitizers, and leak analysis.
 
 Keep generated-file and metadata checks proportional to the change. For release
 contents, test a fresh unpacked archive or the build tool's distribution test

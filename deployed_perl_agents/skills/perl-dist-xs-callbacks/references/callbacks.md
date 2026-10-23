@@ -74,7 +74,20 @@ jump through native library frames that forbid that control transfer: trap it
 at the callback boundary, retain it, return a native error indication, and
 propagate it once the library has unwound normally.
 
+When calling a method or hook found by lookup, resolve it, then retain the
+resolved CV before any predicate or other hook runs between resolution and the
+call; a glob or stash entry can be deleted or replaced in the meantime.
+`DESTROY` is a callback path too: any decrement, `sv_setsv` on an output and
+`FREETMPS` can run it, so resetting an output can free the arguments unless
+they were retained first. After the call, re-validate any input buffer pointer
+captured before it. The `perl-dist-xs-memory` skill's ownership reference
+covers what to retain and how to reset outputs.
+
 Test normal results in requested contexts, empty results, exceptions (including
 objects), nested calls, stack growth, temporary results, replacement of a stored
 callback, and cleanup after errors. Restrict tests to the behaviors the API
 supports, and state unsupported asynchronous/foreign-thread callbacks explicitly.
+
+Sources: target `perlcall`, `perlapi` entries for the calling, scope and
+reference-count APIs named above, and `perlguts` on reference counts and
+mortality and on exception handling.
