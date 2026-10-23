@@ -16,7 +16,8 @@ support range.
 2. Prefer documented public APIs and their normal short names. A declaration
    in installed headers, a `Perl_` prefix, or documentation in `perlintern`
    does not establish an extension API guarantee. Check experimental and
-   deprecated status as well as symbol presence.
+   deprecated status as well as symbol presence. A function exported on the
+   development Perl can be core-only on an older supported one.
 3. Use the distribution's `ppport.h` where applicable; inspect its API support
    and diagnostics before adding version tests or private shims. Backport
    availability does not establish semantic equivalence on every target.

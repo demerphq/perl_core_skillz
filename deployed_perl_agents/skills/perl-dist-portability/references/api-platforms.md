@@ -27,6 +27,54 @@ regenerate it. Do not replace an existing header without reviewing local
 configuration and effects. Hand-written `#ifndef` replacements can shadow real
 functions and often miss semantic differences; use established backports first.
 
+## Symbol visibility on older Perls
+
+A function present in every `libperl` can still be unavailable to extensions on
+some supported Perls, and the development Perl's headers do not reveal it.
+`embed.h` defines the short name for extensions only when the function's
+`embed.fnc` flags allow it: `A` (public API) or, in recent Perls, `C` (intended
+for core, but the short name is defined everywhere and the symbol exported). A
+function flagged `p` alone or `E` keeps its macro under `#if defined(PERL_CORE)`
+or `PERL_EXT`. A flag change in a later Perl does not apply to earlier ones.
+
+The failure is split across build and load. An extension calling such a
+function compiles cleanly on a Perl where it is flagged `C`. On an older Perl
+where it is `p`-only, the compiler warns `implicit declaration of function` and
+the build continues; loading then fails in DynaLoader with `Can't load ...`
+and `undefined symbol`. `unshare_hek()`, for example, is flagged `C` from 5.38
+and `p` before it.
+
+Do not define `PERL_CORE` or `PERL_EXT` in an extension to reach a core-only
+function. On Windows the DLL export list built by `makedef.pl` contains only
+functions flagged `A`, `X` or `C`, so the symbol still fails to link. These
+macros also change `XSUB.h` behaviour, such as the Win32 `PERL_IMPLICIT_SYS`
+redirection of malloc and stdio. Use a public alternative instead.
+
+Before using a function that is not documented in the oldest supported
+`perlapi`:
+
+- Read its `embed.fnc` entry in that Perl's source (a source tree or git tag of
+  that version), or check the guards around its macro in that version's
+  installed `embed.h`.
+- Run `perl ppport.h --api-info=/name/`. It reports availability for many
+  functions (for example `newSVhek` since 5.9.3, `newSV_type` since 5.9.5), but
+  prints nothing for many macros and marks some entries `Viu` (unverified,
+  inaccessible, undocumented); check headers for those.
+- Build at least once with `-Werror=implicit-function-declaration` added to
+  `CCFLAGS`, so a missing declaration fails the compile instead of the load.
+- Treat the CI matrix across supported Perls as the real check. Read link or
+  load errors there as portability failures, not flakiness.
+
+Feature-test version-dependent internals with `#ifdef` on the macro rather than
+comparing version numbers, and comment why the internal is needed:
+
+- `SvIsCOW_on` exists only from 5.18. Before that a shared-hash-key scalar is
+  marked `SVf_FAKE|SVf_READONLY` with `SvLEN` 0.
+- `HVhek_UNSHARED` was renamed `HVhek_NOTSHARED`.
+- `PERL_HASH_RANDOMIZE_KEYS`, the default since 5.18, changes what the hash
+  iterator index `HvRITER` means: it is a position in a randomized iteration
+  order, not a bucket number.
+
 ## C types and configuration
 
 Use `IV`, `UV`, `NV`, `STRLEN`, and appropriate signed index/offset types for
@@ -82,3 +130,8 @@ Choose tests for the changed axis: oldest supported Perl, current Perl,
 threaded/non-threaded builds, integer width, native library versions, Windows
 or other claimed platforms. Rebuild separately for each configuration. Do not
 reuse a compiled extension based only on matching `$]` or `archname`.
+
+Sources: target `perlapi` and `perlguts`; the flag legend at the top of
+`embed.fnc` in a Perl source tree of each supported version; the guards in that
+version's installed `embed.h`, `proto.h`, `hv.h` and `sv.h`; `Devel::PPPort` and
+`ppport.h --api-info`; `perlhacktips` on compiler warnings.
