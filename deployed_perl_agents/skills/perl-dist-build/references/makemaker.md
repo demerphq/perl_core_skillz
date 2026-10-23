@@ -75,6 +75,13 @@ and replace an existing distribution directory, so inspect overrides first.
 For an archive regression, unpack the produced archive into a separate temporary
 directory and run the ordinary build/test there as well.
 
+A `Makefile.PL` that detects an in-repository build, for example to link or
+copy sources shared with sibling projects, must test `-e "$root/.git"`, not
+`-d`. In a git worktree or submodule `.git` is a file, so a `-d` test takes the
+dist-mode branch and configure then fails to find the shared sources, typically
+with `Can't locate inc/...`. Test configure from a worktree as well as from an
+unpacked archive.
+
 `INSTALL_BASE` chooses an installation prefix; `DESTDIR` stages an installation
 under a packaging root. They solve different problems. Neither is needed for
 normal `blib` testing. Do not use `make install` to work around test path errors.
